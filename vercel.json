@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/segment-garments.js": {
+      "maxDuration": 60
+    }
+  }
+}

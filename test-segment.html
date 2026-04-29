@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vesti — Vision Test</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 720px; margin: 40px auto; padding: 24px; background: #f6f5f1; color: #1a1a1a; }
+    h1 { font-weight: 500; }
+    .panel { background: white; border: 1px solid #e0dcd4; border-radius: 12px; padding: 20px; margin: 16px 0; }
+    button { background: #1a3328; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .result { white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; background: #f6f5f1; padding: 12px; border-radius: 8px; max-height: 400px; overflow: auto; }
+    .preview { max-width: 100%; border-radius: 8px; margin-top: 12px; }
+    .garment { background: white; border: 1px solid #e0dcd4; border-radius: 8px; padding: 12px; margin: 8px 0; }
+    .garment-title { font-weight: 600; margin-bottom: 4px; }
+    .garment-meta { font-size: 13px; color: #555; }
+    .status { color: #555; font-size: 14px; margin: 8px 0; }
+    .error { color: #b00020; }
+  </style>
+</head>
+<body>
+  <h1>Vesti — Vision Test</h1>
+  <p>Upload a flatlay photo of clothing items and Claude will identify every garment.</p>
+
+  <div class="panel">
+    <input type="file" id="photoInput" accept="image/*">
+    <img id="preview" class="preview" style="display:none">
+    <div style="margin-top: 16px;">
+      <button id="analyzeBtn" disabled>Analyze garments</button>
+    </div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <script>
+    const photoInput = document.getElementById("photoInput");
+    const preview = document.getElementById("preview");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const statusEl = document.getElementById("status");
+    const resultsEl = document.getElementById("results");
+
+    let photoBase64 = null;
+    let photoMediaType = "image/jpeg";
+
+    photoInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          // Resize to max 1600px on longest side to stay under Vercel body limit
+          const maxDim = 1600;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          const resizedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          preview.src = resizedDataUrl;
+          preview.style.display = "block";
+          photoBase64 = resizedDataUrl.split(",")[1];
+          photoMediaType = "image/jpeg";
+          analyzeBtn.disabled = false;
+          statusEl.textContent = "Ready. Click Analyze.";
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    analyzeBtn.addEventListener("click", async () => {
+      analyzeBtn.disabled = true;
+      statusEl.textContent = "Analyzing... (this can take 10-30 seconds)";
+      statusEl.classList.remove("error");
+      resultsEl.innerHTML = "";
+
+      try {
+        const res = await fetch("/api/segment-garments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ photoBase64, mediaType: photoMediaType }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Unknown error");
+
+        statusEl.textContent = `Found ${data.garments?.length || 0} garments.`;
+
+        if (data.garments && Array.isArray(data.garments)) {
+          resultsEl.innerHTML = data.garments.map((g, i) => `
+            <div class="garment">
+              <div class="garment-title">${i + 1}. ${g.subcategory || g.category}</div>
+              <div class="garment-meta">
+                Category: ${g.category} • Color: ${g.color} • Pattern: ${g.pattern} • Formality: ${g.formality_score}/5
+              </div>
+              <div class="garment-meta" style="margin-top: 4px;">${g.description || ""}</div>
+            </div>
+          `).join("");
+        }
+
+        const rawDiv = document.createElement("div");
+        rawDiv.className = "panel";
+        rawDiv.innerHTML = `<strong>Raw response:</strong><div class="result">${escapeHtml(JSON.stringify(data, null, 2))}</div>`;
+        resultsEl.appendChild(rawDiv);
+
+      } catch (err) {
+        statusEl.textContent = "Error: " + err.message;
+        statusEl.classList.add("error");
+      } finally {
+        analyzeBtn.disabled = false;
+      }
+    });
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    }
+  </script>
+</body>
+</html>

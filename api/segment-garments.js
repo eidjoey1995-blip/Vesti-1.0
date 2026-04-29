@@ -32,6 +32,8 @@ Return JSON only, no other text. Format:
 }`;
 
 export default async function handler(req, res) {
+console.log("ANTHROPIC_API_KEY length:", (process.env.ANTHROPIC_API_KEY || "").length);
+  console.log("ANTHROPIC_API_KEY prefix:", (process.env.ANTHROPIC_API_KEY || "MISSING").slice(0, 13));
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }

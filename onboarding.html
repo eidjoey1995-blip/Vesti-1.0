@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Vesti — Build your closet</title>
+  <style>
+    :root {
+      --bg: #fafaf7;
+      --ink: #14110f;
+      --muted: #6f6a64;
+      --line: #e5e1da;
+      --accent: #14110f;
+      --accent-soft: #efeae0;
+      --ok: #2f7a4a;
+      --warn: #b25c1c;
+      --err: #a43030;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px 20px 120px;
+    }
+    h1 {
+      font-family: "SF Pro Display", -apple-system, serif;
+      font-weight: 600;
+      font-size: 28px;
+      margin: 8px 0 4px;
+      letter-spacing: -0.01em;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    label.field {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    input[type="email"], input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 16px;
+      background: #fff;
+      color: var(--ink);
+    }
+    input[type="email"]:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: var(--ink);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.ghost { background: transparent; color: var(--ink); }
+    .btn.danger { background: transparent; color: var(--err); border-color: transparent; padding: 6px 8px; font-size: 13px; }
+    .btn.full { width: 100%; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .photo-tile {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 14px;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+    .photo-tile:first-child { border-top: none; padding-top: 0; }
+    .photo-tile img {
+      width: 88px;
+      height: 88px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+    .photo-meta {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .photo-meta .status { display: block; margin-top: 4px; }
+    .status.pending { color: var(--muted); }
+    .status.ok { color: var(--ok); }
+    .status.err { color: var(--err); }
+    .garment {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      margin-top: 8px;
+      background: #fff;
+      align-items: center;
+    }
+    .garment .gtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .garment .gtitle small {
+      display: block;
+      font-weight: 400;
+      color: var(--muted);
+      margin-top: 2px;
+      font-size: 12px;
+    }
+    .chips {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .chip {
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 12px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .chip.active {
+      background: var(--accent-soft);
+      color: var(--ink);
+      border-color: var(--ink);
+    }
+    .chip.label-only { cursor: default; background: var(--bg); }
+    .footer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, var(--bg) 70%, rgba(250,250,247,0));
+      border-top: 1px solid var(--line);
+    }
+    .footer .inner { max-width: 640px; margin: 0 auto; }
+    .summary { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    #fileInput { display: none; }
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 32px 16px;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+    }
+    .step { display: none; }
+    .step.active { display: block; }
+    .toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- STEP 1: identify -->
+    <section id="step-identify" class="step active">
+      <h1>Welcome to Vesti</h1>
+      <p class="sub">Drop in some flatlay photos of your clothes — laid out on the bed or floor. We'll catalog them for you.</p>
+      <div class="card">
+        <label class="field" for="email">Your email</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+        <p class="sub" style="margin: 10px 0 0; font-size: 13px;">No password yet — just so we can save your closet under the right account.</p>
+      </div>
+      <button class="btn full" id="btnContinue" disabled>Continue</button>
+    </section>
+
+    <!-- STEP 2: upload + review -->
+    <section id="step-upload" class="step">
+      <h1>Your closet, item by item</h1>
+      <p class="sub">Add a photo. We'll find the garments. You can correct fabric or remove false hits before saving.</p>
+
+      <input type="file" id="fileInput" accept="image/*" multiple />
+      <div id="empty" class="empty">
+        <p style="margin: 0 0 12px;">No photos yet.</p>
+        <button class="btn" id="btnAddPhoto">Add photos</button>
+      </div>
+
+      <div id="photos"></div>
+
+      <div class="footer" id="actionFooter" style="display:none">
+        <div class="inner">
+          <p class="summary" id="summary"></p>
+          <div class="row" style="gap: 10px;">
+            <button class="btn ghost" id="btnAddMore">Add more</button>
+            <button class="btn" id="btnSave" style="flex: 1;">Save my closet</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3: done -->
+    <section id="step-done" class="step">
+      <h1>Saved</h1>
+      <p class="sub" id="doneSummary">Your closet is in.</p>
+      <div class="card">
+        <p class="summary" style="margin: 0;">Next we'll generate outfits for you. That part's coming in the next build.</p>
+      </div>
+      <button class="btn full" onclick="location.reload()">Add another batch</button>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+const SEGMENT_ENDPOINT = "/api/segment-garments";
+const SAVE_ENDPOINT = "/api/save-garments";
+
+const FABRIC_OPTIONS = ["cotton", "linen", "wool", "denim", "synthetic", "other"];
+
+const state = {
+  email: "",
+  photos: [] // [{id, file, dataUrl, status, error, garments: [{category, color, pattern, ..., fabric, fabric_confirmed, _kept:true}]}]
+};
+
+let nextId = 1;
+
+// ---------- helpers ----------
+function $(s) { return document.querySelector(s); }
+function $$(s) { return [...document.querySelectorAll(s)]; }
+
+function showStep(id) {
+  $$(".step").forEach(el => el.classList.remove("active"));
+  $("#" + id).classList.add("active");
+}
+
+function toast(msg, ms = 2400) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), ms);
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+// Resize to max 1024px on the long edge before sending — saves payload + cost.
+async function resizeImage(file, maxDim = 1024) {
+  const dataUrl = await fileToDataUrl(file);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (Math.max(w, h) > maxDim) {
+        const scale = maxDim / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      const out = canvas.toDataURL("image/jpeg", 0.82);
+      resolve({ dataUrl: out, originalDataUrl: dataUrl });
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+function dataUrlToBase64(d) {
+  return d.split(",")[1];
+}
+
+// ---------- step 1 ----------
+$("#email").addEventListener("input", e => {
+  const v = e.target.value.trim();
+  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  $("#btnContinue").disabled = !ok;
+  state.email = v;
+});
+
+$("#btnContinue").addEventListener("click", () => {
+  showStep("step-upload");
+});
+
+// ---------- step 2 ----------
+$("#btnAddPhoto").addEventListener("click", () => $("#fileInput").click());
+$("#btnAddMore").addEventListener("click", () => $("#fileInput").click());
+
+$("#fileInput").addEventListener("change", async (e) => {
+  const files = [...e.target.files];
+  e.target.value = "";
+  if (files.length === 0) return;
+
+  for (const file of files) {
+    const id = nextId++;
+    const placeholder = {
+      id, file,
+      dataUrl: null,
+      smallBase64: null,
+      status: "loading",
+      error: null,
+      garments: []
+    };
+    state.photos.push(placeholder);
+  }
+  render();
+
+  // Process sequentially to avoid hammering the endpoint.
+  for (const photo of state.photos.filter(p => p.status === "loading")) {
+    try {
+      const { dataUrl, originalDataUrl } = await resizeImage(photo.file, 1024);
+      photo.dataUrl = originalDataUrl;
+      photo.smallBase64 = dataUrlToBase64(dataUrl);
+      photo.status = "segmenting";
+      render();
+
+      const r = await fetch(SEGMENT_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoBase64: photo.smallBase64,
+          mediaType: "image/jpeg"
+        })
+      });
+      if (!r.ok) {
+        const txt = await r.text();
+        throw new Error("HTTP " + r.status + ": " + txt.slice(0, 200));
+      }
+      const json = await r.json();
+      const detected = (json.garments || []).map(g => ({
+        ...g,
+        fabric: null,
+        fabric_confirmed: false,
+        _kept: true
+      }));
+      photo.garments = detected;
+      photo.status = detected.length === 0 ? "empty" : "ready";
+    } catch (err) {
+      photo.status = "error";
+      photo.error = err.message || String(err);
+    }
+    render();
+  }
+});
+
+function render() {
+  const wrap = $("#photos");
+  const hasPhotos = state.photos.length > 0;
+  $("#empty").style.display = hasPhotos ? "none" : "";
+  $("#actionFooter").style.display = hasPhotos ? "" : "none";
+
+  if (!hasPhotos) { wrap.innerHTML = ""; return; }
+
+  wrap.innerHTML = state.photos.map(renderPhoto).join("");
+  bindGarmentEvents();
+  updateSummary();
+}
+
+function renderPhoto(p) {
+  const thumb = p.dataUrl
+    ? `<img src="${p.dataUrl}" alt="" />`
+    : `<div style="width:88px;height:88px;background:#f1ede5;border-radius:8px;"></div>`;
+
+  let body = "";
+  if (p.status === "loading" || p.status === "segmenting") {
+    body = `<div class="photo-meta">
+      <span class="status pending">${p.status === "loading" ? "Preparing…" : "Detecting garments…"}</span>
+    </div>`;
+  } else if (p.status === "error") {
+    body = `<div class="photo-meta">
+      <span class="status err">Couldn't process: ${escapeHtml(p.error || "unknown error")}</span>
+      <button class="btn danger" data-action="remove-photo" data-pid="${p.id}">Remove</button>
+    </div>`;
+  } else if (p.status === "empty") {
+    body = `<div class="photo-meta">
+      <span class="status pending">No garments detected. Try a flatter, more spread-out shot.</span>
+      <button class="btn danger" data-action="remove-photo" data-pid="${p.id}">Remove</button>
+    </div>`;
+  } else {
+    const kept = p.garments.filter(g => g._kept).length;
+    body = `<div class="photo-meta">
+      <span class="status ok">${kept} garment${kept === 1 ? "" : "s"}</span>
+      <button class="btn danger" data-action="remove-photo" data-pid="${p.id}">Remove photo</button>
+    </div>
+    <div style="grid-column: 1 / -1; margin-top: 6px;">
+      ${p.garments.map((g, idx) => renderGarment(p.id, idx, g)).join("")}
+    </div>`;
+  }
+
+  return `<div class="photo-tile" data-pid="${p.id}">
+    ${thumb}
+    <div>${body}</div>
+  </div>`;
+}
+
+function renderGarment(pid, idx, g) {
+  if (!g._kept) {
+    return `<div class="garment" style="opacity:0.4;">
+      <div class="gtitle">Removed
+        <small>${escapeHtml(g.subcategory || g.category || "")}</small>
+      </div>
+      <button class="btn danger" data-action="restore" data-pid="${pid}" data-idx="${idx}" style="color:var(--ink);">Undo</button>
+    </div>`;
+  }
+
+  const fabricChips = FABRIC_OPTIONS.map(f => `
+    <span class="chip ${g.fabric === f ? "active" : ""}" data-action="fabric" data-pid="${pid}" data-idx="${idx}" data-fabric="${f}">${f}</span>
+  `).join("");
+
+  return `<div class="garment">
+    <div class="gtitle">
+      ${escapeHtml(g.subcategory || g.category || "garment")}
+      <small>${[g.color, g.pattern, "formality " + (g.formality_score ?? "?")].filter(Boolean).join(" · ")}</small>
+    </div>
+    <button class="btn danger" data-action="remove" data-pid="${pid}" data-idx="${idx}">Remove</button>
+    <div class="chips">
+      <span class="chip label-only">Fabric:</span>
+      ${fabricChips}
+    </div>
+  </div>`;
+}
+
+function bindGarmentEvents() {
+  $$("#photos [data-action]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      const a = el.getAttribute("data-action");
+      const pid = +el.getAttribute("data-pid");
+      const idx = +el.getAttribute("data-idx");
+      const photo = state.photos.find(p => p.id === pid);
+      if (!photo) return;
+
+      if (a === "remove-photo") {
+        state.photos = state.photos.filter(p => p.id !== pid);
+      } else if (a === "remove") {
+        photo.garments[idx]._kept = false;
+      } else if (a === "restore") {
+        photo.garments[idx]._kept = true;
+      } else if (a === "fabric") {
+        const f = el.getAttribute("data-fabric");
+        const g = photo.garments[idx];
+        if (g.fabric === f) {
+          g.fabric = null;
+          g.fabric_confirmed = false;
+        } else {
+          g.fabric = f;
+          g.fabric_confirmed = true;
+        }
+      }
+      render();
+    });
+  });
+}
+
+function updateSummary() {
+  const all = state.photos.flatMap(p => p.garments.filter(g => g._kept));
+  const photos = state.photos.filter(p => p.status === "ready").length;
+  $("#summary").textContent = `${all.length} garments across ${photos} photo${photos === 1 ? "" : "s"} ready to save.`;
+  $("#btnSave").disabled = all.length === 0;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[c]));
+}
+
+// ---------- save ----------
+$("#btnSave").addEventListener("click", async () => {
+  const btn = $("#btnSave");
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+
+  // Flatten kept garments into one save call per photo (so source_photo_url is meaningful).
+  // For now we don't have storage upload, so source_photo_url is null.
+  const photosToSave = state.photos.filter(p => p.status === "ready" && p.garments.some(g => g._kept));
+  let totalSaved = 0;
+  let firstErr = null;
+
+  for (const photo of photosToSave) {
+    const payload = {
+      email: state.email,
+      source_photo_url: null,
+      garments: photo.garments
+        .filter(g => g._kept)
+        .map(g => ({
+          category: g.category,
+          subcategory: g.subcategory,
+          color: g.color,
+          pattern: g.pattern,
+          formality_score: g.formality_score,
+          description: g.description,
+          fabric: g.fabric,
+          fabric_confirmed: g.fabric_confirmed,
+          raw_response: g
+        }))
+    };
+    try {
+      const r = await fetch(SAVE_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
+      totalSaved += (j.saved || []).length;
+    } catch (err) {
+      if (!firstErr) firstErr = err;
+    }
+  }
+
+  if (firstErr && totalSaved === 0) {
+    btn.disabled = false;
+    btn.textContent = "Save my closet";
+    toast("Save failed: " + (firstErr.message || firstErr));
+    return;
+  }
+
+  $("#doneSummary").textContent = `${totalSaved} garments saved under ${state.email}.${firstErr ? " (Some photos failed.)" : ""}`;
+  showStep("step-done");
+});
+</script>
+</body>
+</html>

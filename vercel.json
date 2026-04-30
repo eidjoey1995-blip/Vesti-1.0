@@ -1,7 +1,6 @@
 {
   "functions": {
-    "api/segment-garments.js": {
-      "maxDuration": 60
-    }
+    "api/segment-garments.js": { "maxDuration": 60 },
+    "api/save-garments.js": { "maxDuration": 30 }
   }
 }

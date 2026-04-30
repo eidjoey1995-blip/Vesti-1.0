@@ -10,9 +10,9 @@ import { createClient } from "@supabase/supabase-js";
 //   insert garments under that user_id. Next iteration swaps
 //   this for proper Supabase Auth + JWT validation.
 //
-// Env vars required (Vercel Project Settings â Environment Variables):
+// Env vars required (Vercel Project Settings → Environment Variables):
 //   SUPABASE_URL                 e.g. https://tmgftqnekispazjfnqxw.supabase.co
-//   SUPABASE_SERVICE_ROLE_KEY    (do NOT use anon key â RLS would block)
+//   SUPABASE_SERVICE_KEY         (do NOT use anon key — RLS would block)
 // =========================================================
 
 export default async function handler(req, res) {
@@ -22,12 +22,12 @@ export default async function handler(req, res) {
   }
 
   const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   if (!url || !serviceKey) {
     return res.status(500).json({
       error: {
         code: "missing_env",
-        message: "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in Vercel env vars."
+        message: "SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in Vercel env vars."
       }
     });
   }
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       .from("profiles")
       .upsert({ id: userId, display_name: email.split("@")[0] }, { onConflict: "id" });
   } catch (err) {
-    // Non-fatal â keep going.
+    // Non-fatal — keep going.
     console.warn("profile upsert warning:", err?.message || err);
   }
 

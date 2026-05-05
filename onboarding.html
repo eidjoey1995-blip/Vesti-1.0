@@ -208,13 +208,23 @@
         <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
         <p class="sub" style="margin: 10px 0 0; font-size: 13px;">No password yet — just so we can save your closet under the right account.</p>
       </div>
+      <div class="card">
+        <label class="field">Where you're based</label>
+        <!-- BETA cohort: Beirut (7), Dubai (2), NY (1). City informs codex weather/occasion assumptions. -->
+        <div class="row" id="cityChips" style="gap:8px;">
+          <span class="chip" data-city="Beirut">Beirut</span>
+          <span class="chip" data-city="Dubai">Dubai</span>
+          <span class="chip" data-city="New York">New York</span>
+        </div>
+        <p class="sub" style="margin: 10px 0 0; font-size: 13px;">Used to set climate and dress-code defaults. You can change this later.</p>
+      </div>
       <button class="btn full" id="btnContinue" disabled>Continue</button>
     </section>
 
     <!-- STEP 2: upload + review -->
     <section id="step-upload" class="step">
       <h1>Your closet, item by item</h1>
-      <p class="sub">Add a photo. We'll find the garments. You can correct fabric or remove false hits before saving.</p>
+      <p class="sub">Add a photo. We'll find the garments. Remove any false hits before saving.</p>
 
       <input type="file" id="fileInput" accept="image/*" multiple />
       <div id="empty" class="empty">
@@ -240,9 +250,10 @@
       <h1>Saved</h1>
       <p class="sub" id="doneSummary">Your closet is in.</p>
       <div class="card">
-        <p class="summary" style="margin: 0;">Next we'll generate outfits for you. That part's coming in the next build.</p>
+        <p class="summary" style="margin: 0;">Next: see your wardrobe in Vesti, then ask the stylist to put a look together.</p>
       </div>
-      <button class="btn full" onclick="location.reload()">Add another batch</button>
+      <button class="btn full" onclick="location.href='/app.html#closet'">See my closet</button>
+      <button class="btn ghost full" style="margin-top:10px" onclick="location.reload()">Add another batch</button>
     </section>
   </div>
 
@@ -252,10 +263,17 @@
 const SEGMENT_ENDPOINT = "/api/segment-garments";
 const SAVE_ENDPOINT = "/api/save-garments";
 
-const FABRIC_OPTIONS = ["cotton", "linen", "wool", "denim", "synthetic", "other"];
+// Fabric used to be a per-garment tap-to-confirm step here. Removed May 4, 2026 —
+// it asked irrelevant questions (e.g. fabric on shoes) and slowed onboarding. The
+// codex-grounded stylist (#52) prescribes fabric weight by occasion + climate
+// rather than depending on a user-confirmed tag, so leaving fabric=null is fine.
+// `fabric` and `fabric_confirmed` fields are retained on the save payload for
+// API compatibility (always null / always false now); future learning loop will
+// pick fabric up from swipe signals + photos.
 
 const state = {
   email: "",
+  city: "Beirut", // default for the V1 BETA cohort majority
   photos: [] // [{id, file, dataUrl, status, error, garments: [{category, color, pattern, ..., fabric, fabric_confirmed, _kept:true}]}]
 };
 
@@ -316,12 +334,35 @@ function dataUrlToBase64(d) {
 }
 
 // ---------- step 1 ----------
+function step1Valid() {
+  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email);
+  return ok && !!state.city;
+}
+
+function syncStep1Cta() {
+  $("#btnContinue").disabled = !step1Valid();
+}
+
 $("#email").addEventListener("input", e => {
-  const v = e.target.value.trim();
-  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  $("#btnContinue").disabled = !ok;
-  state.email = v;
+  state.email = e.target.value.trim();
+  syncStep1Cta();
 });
+
+// City chips: pre-select default, then click swaps the active chip and writes state.city.
+function paintCityChips() {
+  $$("#cityChips .chip").forEach(c => {
+    c.classList.toggle("active", c.getAttribute("data-city") === state.city);
+  });
+}
+$$("#cityChips .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    state.city = chip.getAttribute("data-city");
+    paintCityChips();
+    syncStep1Cta();
+  });
+});
+paintCityChips();
+syncStep1Cta();
 
 $("#btnContinue").addEventListener("click", () => {
   showStep("step-upload");
@@ -448,20 +489,12 @@ function renderGarment(pid, idx, g) {
     </div>`;
   }
 
-  const fabricChips = FABRIC_OPTIONS.map(f => `
-    <span class="chip ${g.fabric === f ? "active" : ""}" data-action="fabric" data-pid="${pid}" data-idx="${idx}" data-fabric="${f}">${f}</span>
-  `).join("");
-
   return `<div class="garment">
     <div class="gtitle">
       ${escapeHtml(g.subcategory || g.category || "garment")}
       <small>${[g.color, g.pattern, "formality " + (g.formality_score ?? "?")].filter(Boolean).join(" · ")}</small>
     </div>
     <button class="btn danger" data-action="remove" data-pid="${pid}" data-idx="${idx}">Remove</button>
-    <div class="chips">
-      <span class="chip label-only">Fabric:</span>
-      ${fabricChips}
-    </div>
   </div>`;
 }
 
@@ -481,16 +514,6 @@ function bindGarmentEvents() {
         photo.garments[idx]._kept = false;
       } else if (a === "restore") {
         photo.garments[idx]._kept = true;
-      } else if (a === "fabric") {
-        const f = el.getAttribute("data-fabric");
-        const g = photo.garments[idx];
-        if (g.fabric === f) {
-          g.fabric = null;
-          g.fabric_confirmed = false;
-        } else {
-          g.fabric = f;
-          g.fabric_confirmed = true;
-        }
       }
       render();
     });
@@ -525,6 +548,7 @@ $("#btnSave").addEventListener("click", async () => {
   for (const photo of photosToSave) {
     const payload = {
       email: state.email,
+      city: state.city, // upserts onto profiles.city; non-fatal if column missing
       source_photo_url: null,
       garments: photo.garments
         .filter(g => g._kept)
@@ -562,6 +586,11 @@ $("#btnSave").addEventListener("click", async () => {
   }
 
   $("#doneSummary").textContent = `${totalSaved} garments saved under ${state.email}.${firstErr ? " (Some photos failed.)" : ""}`;
+
+  // Persist email so app.html can identify this user on /api/get-closet calls.
+  // Replaced by Supabase JWT in #61/#62.
+  try { localStorage.setItem("vesti_email", state.email); } catch (e) { /* private mode */ }
+
   showStep("step-done");
 });
 </script>

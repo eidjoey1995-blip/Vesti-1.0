@@ -3659,8 +3659,11 @@
         return;
       }
 
-      // Show a quiet loading state without blowing away the grid layout.
+      // Show a visible loading state so the tab doesn't look frozen on first paint.
       grid.setAttribute("aria-busy", "true");
+      if (!closetState.loaded) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px 18px;color:var(--ink-mid);">Loading your closet…</div>`;
+      }
 
       try {
         const r = await fetch(`${CLOSET_ENDPOINT}?email=${encodeURIComponent(email)}&limit=200`);

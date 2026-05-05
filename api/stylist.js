@@ -14,10 +14,10 @@ import Anthropic from "@anthropic-ai/sdk";
 //   4. Persist outfit to `outfits` table, return outfit_id. ✅
 //   5. Wire stylist + stylist-result screens in app.html (#55).  ← next session
 //
-// Spike auth (BETA pre-#62): client sends `email` in body. Same shape as
-// save-garments / get-closet / get-gaps.
+// Auth: Authorization: Bearer <supabase_access_token>
+// user_id is resolved from the JWT — not accepted in the body.
 //
-// Request: POST { email: string, occasion: string }
+// Request: POST { occasion: string }
 // Response 200: {
 //   outfit_id,            // uuid of persisted row in `outfits` (null if persistence failed)
 //   outfit: { items: [{garment_id, role}], reasoning },
@@ -192,6 +192,19 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
 
+async function resolveUser(req, supabase) {
+  const auth = (req.headers.authorization || "").trim();
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) {
+    return { userId: null, err: { code: "unauthorized", message: "Authorization header required" } };
+  }
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return { userId: null, err: { code: "unauthorized", message: error?.message || "Invalid token" } };
+  }
+  return { userId: user.id, err: null };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -214,34 +227,16 @@ export default async function handler(req, res) {
     });
   }
 
-  const { email, occasion } = req.body || {};
-  if (!email || typeof email !== "string") {
-    return res.status(400).json({ error: { code: "missing_email", message: "email is required" } });
-  }
-  if (!occasion || typeof occasion !== "string" || occasion.trim().length === 0) {
-    return res.status(400).json({ error: { code: "missing_occasion", message: "occasion is required" } });
-  }
-
   const supabase = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 
-  // Resolve user_id from email (same spike-auth pattern as get-closet).
-  let userId;
-  try {
-    const { data: existing, error: listErr } = await supabase.auth.admin.listUsers();
-    if (listErr) throw listErr;
-    const match = existing?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-    if (!match) {
-      return res.status(404).json({
-        error: { code: "user_not_found", message: "no user for that email — finish onboarding first" }
-      });
-    }
-    userId = match.id;
-  } catch (err) {
-    return res.status(500).json({
-      error: { code: "auth_user_resolve_failed", message: err.message || String(err) }
-    });
+  const { userId, err: authErr } = await resolveUser(req, supabase);
+  if (authErr) return res.status(401).json({ error: authErr });
+
+  const { occasion } = req.body || {};
+  if (!occasion || typeof occasion !== "string" || occasion.trim().length === 0) {
+    return res.status(400).json({ error: { code: "missing_occasion", message: "occasion is required" } });
   }
 
   // Profile read — city is the codex overlay key. Non-fatal if missing.

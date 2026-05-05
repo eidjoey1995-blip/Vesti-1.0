@@ -2,18 +2,28 @@ import { createClient } from "@supabase/supabase-js";
 
 // =========================================================
 // POST /api/save-garments
-// Persists segmented garments to the `garments` table.
+// Auth: Authorization: Bearer <supabase_access_token>
+// Body: { city?, source_photo_url?, garments[] }
 //
-// Spike auth model (V1 BETA pre-auth):
-//   Client sends `email`. We upsert a Supabase auth user with
-//   that email (admin createUser, email_confirm=true), then
-//   insert garments under that user_id. Next iteration swaps
-//   this for proper Supabase Auth + JWT validation.
+// user_id is resolved from the JWT — not accepted in the body.
 //
-// Env vars required (Vercel Project Settings → Environment Variables):
-//   SUPABASE_URL                 e.g. https://tmgftqnekispazjfnqxw.supabase.co
-//   SUPABASE_SERVICE_KEY         (do NOT use anon key — RLS would block)
+// Env vars required:
+//   SUPABASE_URL
+//   SUPABASE_SERVICE_KEY
 // =========================================================
+
+async function resolveUser(req, supabase) {
+  const auth = (req.headers.authorization || "").trim();
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) {
+    return { userId: null, email: null, err: { code: "unauthorized", message: "Authorization header required" } };
+  }
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return { userId: null, email: null, err: { code: "unauthorized", message: error?.message || "Invalid token" } };
+  }
+  return { userId: user.id, email: user.email, err: null };
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -25,64 +35,35 @@ export default async function handler(req, res) {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   if (!url || !serviceKey) {
     return res.status(500).json({
-      error: {
-        code: "missing_env",
-        message: "SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in Vercel env vars."
-      }
+      error: { code: "missing_env", message: "SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in Vercel env vars." }
     });
   }
-
-  const { email, source_photo_url, garments, city } = req.body || {};
-
-  if (!email || typeof email !== "string") {
-    return res.status(400).json({ error: { code: "missing_email", message: "email is required" } });
-  }
-  if (!Array.isArray(garments) || garments.length === 0) {
-    return res.status(400).json({ error: { code: "missing_garments", message: "garments must be a non-empty array" } });
-  }
-  // Whitelist city to the BETA cohort cities. Unknown values fall through silently.
-  // Codex assumptions per city flagged in docs/methodology §5b notes (#46).
-  const ALLOWED_CITIES = new Set(["Beirut", "Dubai", "New York"]);
-  const cityClean = (typeof city === "string" && ALLOWED_CITIES.has(city)) ? city : null;
 
   const supabase = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 
-  // Resolve or create the user.
-  let userId;
-  try {
-    // Try to find existing user by email.
-    const { data: existing, error: listErr } = await supabase.auth.admin.listUsers();
-    if (listErr) throw listErr;
-    const match = existing?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-    if (match) {
-      userId = match.id;
-    } else {
-      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-        email,
-        email_confirm: true
-      });
-      if (createErr) throw createErr;
-      userId = created.user.id;
-    }
-  } catch (err) {
-    return res.status(500).json({
-      error: { code: "auth_user_resolve_failed", message: err.message || String(err) }
-    });
+  const { userId, email, err } = await resolveUser(req, supabase);
+  if (err) return res.status(401).json({ error: err });
+
+  const { source_photo_url, garments, city } = req.body || {};
+
+  if (!Array.isArray(garments) || garments.length === 0) {
+    return res.status(400).json({ error: { code: "missing_garments", message: "garments must be a non-empty array" } });
   }
 
+  // Whitelist city to the BETA cohort cities.
+  const ALLOWED_CITIES = new Set(["Beirut", "Dubai", "New York"]);
+  const cityClean = (typeof city === "string" && ALLOWED_CITIES.has(city)) ? city : null;
+
   // Ensure profile row exists (idempotent upsert). Include city when provided.
-  // If profiles.city column is missing in the DB, the upsert errors — caught + logged
-  // so onboarding still succeeds (garment insert is the user-visible win).
   try {
-    const profileRow = { id: userId, display_name: email.split("@")[0] };
+    const profileRow = { id: userId, display_name: (email || "").split("@")[0] };
     if (cityClean) profileRow.city = cityClean;
     const { error: profileErr } = await supabase
       .from("profiles")
       .upsert(profileRow, { onConflict: "id" });
     if (profileErr) {
-      // If failure is specifically about city column, retry without it so we still create the profile.
       if (cityClean && /city/i.test(profileErr.message || "")) {
         delete profileRow.city;
         await supabase.from("profiles").upsert(profileRow, { onConflict: "id" });
@@ -90,12 +71,10 @@ export default async function handler(req, res) {
         console.warn("profile upsert warning:", profileErr.message);
       }
     }
-  } catch (err) {
-    // Non-fatal — keep going.
-    console.warn("profile upsert warning:", err?.message || err);
+  } catch (e) {
+    console.warn("profile upsert warning:", e?.message || e);
   }
 
-  // Build garment rows.
   const rows = garments.map((g, i) => ({
     user_id: userId,
     category: g.category ?? "other",
@@ -123,8 +102,5 @@ export default async function handler(req, res) {
     });
   }
 
-  return res.status(200).json({
-    user_id: userId,
-    saved: data
-  });
+  return res.status(200).json({ user_id: userId, saved: data });
 }

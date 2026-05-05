@@ -2948,6 +2948,8 @@
     </div><!-- /phone-inner -->
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
   <!-- ==========================================================
        Script: i18n + RTL + simple view router
        ========================================================== -->
@@ -3633,8 +3635,9 @@
       return raw.charAt(0).toUpperCase() + raw.slice(1);
     }
 
-    function getSavedEmail() {
-      try { return localStorage.getItem("vesti_email") || ""; } catch (e) { return ""; }
+    function getAuthHeaders() {
+      const sess = window._vesti_session;
+      return sess ? { Authorization: "Bearer " + sess.access_token } : {};
     }
 
     async function loadCloset(force = false) {
@@ -3646,19 +3649,6 @@
       const more = document.querySelector('section[data-screen="closet"] [data-i18n="closet_more"]');
       if (!grid) { closetState.loading = false; return; }
 
-      const email = getSavedEmail();
-      if (!email) {
-        // No onboarding completed on this device. Send the user back to onboarding.
-        renderClosetEmpty(grid, more, {
-          headline: "No closet yet.",
-          body: "Add a few photos of your clothes and we'll catalogue them.",
-          ctaLabel: "Start onboarding",
-          ctaHref: "/onboarding.html"
-        });
-        closetState.loading = false;
-        return;
-      }
-
       // Show a visible loading state so the tab doesn't look frozen on first paint.
       grid.setAttribute("aria-busy", "true");
       if (!closetState.loaded) {
@@ -3666,7 +3656,7 @@
       }
 
       try {
-        const r = await fetch(`${CLOSET_ENDPOINT}?email=${encodeURIComponent(email)}&limit=200`);
+        const r = await fetch(`${CLOSET_ENDPOINT}?limit=200`, { headers: getAuthHeaders() });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
 
@@ -3759,21 +3749,12 @@
       const list = document.getElementById("gaps-list");
       if (!list) { gapsState.loading = false; return; }
 
-      const email = getSavedEmail();
-      if (!email) {
-        if (eyebrow) eyebrow.textContent = "No closet yet";
-        if (summary) summary.innerHTML = `<strong>Onboarding hasn't run on this device.</strong> Add your closet first and we'll name the gaps.`;
-        list.innerHTML = `<button class="btn btn-primary btn-block" onclick="window.location.href='/onboarding.html'">Start onboarding</button>`;
-        gapsState.loading = false;
-        return;
-      }
-
       if (eyebrow) eyebrow.textContent = "Loading…";
       if (summary) summary.innerHTML = `<strong>Loading…</strong>`;
       list.setAttribute("aria-busy", "true");
 
       try {
-        const r = await fetch(`${GAPS_ENDPOINT}?email=${encodeURIComponent(email)}`);
+        const r = await fetch(GAPS_ENDPOINT, { headers: getAuthHeaders() });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
 
@@ -3863,18 +3844,6 @@
       stylistState.outfit = null;
       stylistState.error = null;
 
-      const email = getSavedEmail();
-      if (!email) {
-        renderStylistEmpty(lookbook, step, note, {
-          headline: "No closet yet.",
-          body: "Add a few photos so the stylist has something to work with.",
-          ctaLabel: "Start onboarding",
-          ctaHref: "/onboarding.html"
-        });
-        stylistState.loading = false;
-        return;
-      }
-
       if (step) step.textContent = `Styling for ${occasion}…`;
       if (note) note.innerHTML = `<strong>Loading your outfit…</strong>`;
       lookbook.setAttribute("aria-busy", "true");
@@ -3886,8 +3855,8 @@
       try {
         const r = await fetch(STYLIST_ENDPOINT, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, occasion })
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+          body: JSON.stringify({ occasion })
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
@@ -4032,6 +4001,18 @@
       if (g) populateItemDetail(g);
     }, true);
 
+    // Overwrite the profile tile with live session data so the persona/i18n
+    // demo values ("Karim", "Leila") are never visible to real users.
+    function patchProfileFromSession(session) {
+      if (!session || !session.user) return;
+      const email = session.user.email || "";
+      const name = email.split("@")[0] || email;
+      const initial = name.charAt(0).toUpperCase();
+      document.querySelectorAll('[data-i18n="profile_name"]').forEach(el => { el.textContent = name; });
+      document.querySelectorAll('[data-i18n="profile_avatar"]').forEach(el => { el.textContent = initial; });
+      document.querySelectorAll('[data-i18n="profile_city"]').forEach(el => { el.textContent = email; });
+    }
+
     function applyI18n(lang) {
       const dict = i18n[lang] || i18n.en;
       const overrides = personaOverrides[state.persona] && personaOverrides[state.persona][lang] || {};
@@ -4044,6 +4025,8 @@
           el.innerHTML = dict[key];
         }
       });
+      // Real session data always wins over demo persona values.
+      if (window._vesti_session) patchProfileFromSession(window._vesti_session);
     }
 
     function setLang(lang) {
@@ -4185,25 +4168,60 @@
       welcomeCta.addEventListener("click", () => { window.location.href = "/onboarding.html"; });
     }
 
-    // Init
-    setLang("en");
-    applyPersona();
-    renderPrices();
-
-    // Honour inbound deep link (e.g. /app.html#closet from onboarding redirect).
-    // Whitelist visible BETA screens; anything else → welcome.
+    // -------- Session-gated init --------
     const VISIBLE_SCREENS = new Set([
       "welcome", "closet", "closet-gaps", "item-detail",
       "stylist", "stylist-result", "profile", "bulk-photo"
     ]);
-    const initialHash = (window.location.hash || "").replace(/^#/, "");
-    setScreen(VISIBLE_SCREENS.has(initialHash) ? initialHash : "welcome");
 
-    // Respond to hashchange so back/forward + nav from other tabs land correctly.
-    window.addEventListener("hashchange", () => {
-      const h = (window.location.hash || "").replace(/^#/, "");
-      if (VISIBLE_SCREENS.has(h) && h !== state.screen) setScreen(h);
-    });
+    (async function initApp() {
+      try {
+        const cfg = await fetch("/api/auth-config").then(r => r.ok ? r.json() : null).catch(() => null);
+        if (!cfg || !cfg.url || !cfg.anonKey) {
+          window.location.replace("/");
+          return;
+        }
+
+        const sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+        const { data: { session } } = await sb.auth.getSession();
+
+        if (!session) {
+          window.location.replace("/");
+          return;
+        }
+
+        window._vesti_session = session;
+        window._vesti_supabase = sb;
+
+        sb.auth.onAuthStateChange((event, sess) => {
+          if (event === "SIGNED_OUT") { window.location.replace("/"); }
+          else if (sess) { window._vesti_session = sess; patchProfileFromSession(sess); }
+        });
+
+      } catch (err) {
+        console.error("app auth init error:", err);
+        window.location.replace("/");
+        return;
+      }
+
+      // Honour inbound deep link (e.g. /app.html#closet from onboarding redirect).
+      // Logged-in users skip the welcome screen unless it's explicitly hashed.
+      const initialHash = (window.location.hash || "").replace(/^#/, "");
+      const startScreen = VISIBLE_SCREENS.has(initialHash)
+        ? initialHash
+        : (initialHash ? "welcome" : "closet");
+
+      setLang("en");
+      applyPersona();
+      renderPrices();
+      setScreen(startScreen);
+
+      // Respond to hashchange so back/forward + nav from other tabs land correctly.
+      window.addEventListener("hashchange", () => {
+        const h = (window.location.hash || "").replace(/^#/, "");
+        if (VISIBLE_SCREENS.has(h) && h !== state.screen) setScreen(h);
+      });
+    })();
   </script>
 </body>
 </html>

@@ -199,15 +199,10 @@
 </head>
 <body>
   <div class="wrap">
-    <!-- STEP 1: identify -->
+    <!-- STEP 1: city (email replaced by Supabase auth) -->
     <section id="step-identify" class="step active">
       <h1>Welcome to Vesti</h1>
       <p class="sub">Drop in some flatlay photos of your clothes — laid out on the bed or floor. We'll catalog them for you.</p>
-      <div class="card">
-        <label class="field" for="email">Your email</label>
-        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
-        <p class="sub" style="margin: 10px 0 0; font-size: 13px;">No password yet — just so we can save your closet under the right account.</p>
-      </div>
       <div class="card">
         <label class="field">Where you're based</label>
         <!-- BETA cohort: Beirut (7), Dubai (2), NY (1). City informs codex weather/occasion assumptions. -->
@@ -218,7 +213,7 @@
         </div>
         <p class="sub" style="margin: 10px 0 0; font-size: 13px;">Used to set climate and dress-code defaults. You can change this later.</p>
       </div>
-      <button class="btn full" id="btnContinue" disabled>Continue</button>
+      <button class="btn full" id="btnContinue">Continue</button>
     </section>
 
     <!-- STEP 2: upload + review -->
@@ -259,6 +254,58 @@
 
   <div id="toast" class="toast"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+  // Session guard + dedup: must run before the onboarding UI becomes interactive.
+  // Sets window._vesti_session so the save call below can attach the Bearer token.
+  (async function () {
+    const wrap = document.querySelector(".wrap");
+    if (wrap) wrap.style.visibility = "hidden";
+
+    try {
+      const cfg = await fetch("/api/auth-config").then(r => r.ok ? r.json() : null).catch(() => null);
+      if (!cfg || !cfg.url || !cfg.anonKey) {
+        window.location.replace("/");
+        return;
+      }
+
+      const sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+      const { data: { session } } = await sb.auth.getSession();
+
+      if (!session) {
+        window.location.replace("/");
+        return;
+      }
+
+      // Keep session fresh for the save call below.
+      window._vesti_session = session;
+      sb.auth.onAuthStateChange((event, sess) => {
+        if (event === "SIGNED_OUT") { window.location.replace("/"); }
+        else if (sess) { window._vesti_session = sess; }
+      });
+
+      // Dedup: user already has garments → skip to app.
+      const r = await fetch("/api/get-closet?limit=1", {
+        headers: { Authorization: "Bearer " + session.access_token }
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j.garments) && j.garments.length > 0) {
+          window.location.replace("/app.html");
+          return;
+        }
+      }
+
+    } catch (err) {
+      console.error("auth guard error:", err);
+      window.location.replace("/");
+      return;
+    }
+
+    if (wrap) wrap.style.visibility = "";
+  })();
+  </script>
+
 <script>
 const SEGMENT_ENDPOINT = "/api/segment-garments";
 const SAVE_ENDPOINT = "/api/save-garments";
@@ -272,7 +319,6 @@ const SAVE_ENDPOINT = "/api/save-garments";
 // pick fabric up from swipe signals + photos.
 
 const state = {
-  email: "",
   city: "Beirut", // default for the V1 BETA cohort majority
   photos: [] // [{id, file, dataUrl, status, error, garments: [{category, color, pattern, ..., fabric, fabric_confirmed, _kept:true}]}]
 };
@@ -334,20 +380,6 @@ function dataUrlToBase64(d) {
 }
 
 // ---------- step 1 ----------
-function step1Valid() {
-  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email);
-  return ok && !!state.city;
-}
-
-function syncStep1Cta() {
-  $("#btnContinue").disabled = !step1Valid();
-}
-
-$("#email").addEventListener("input", e => {
-  state.email = e.target.value.trim();
-  syncStep1Cta();
-});
-
 // City chips: pre-select default, then click swaps the active chip and writes state.city.
 function paintCityChips() {
   $$("#cityChips .chip").forEach(c => {
@@ -358,11 +390,9 @@ $$("#cityChips .chip").forEach(chip => {
   chip.addEventListener("click", () => {
     state.city = chip.getAttribute("data-city");
     paintCityChips();
-    syncStep1Cta();
   });
 });
 paintCityChips();
-syncStep1Cta();
 
 $("#btnContinue").addEventListener("click", () => {
   showStep("step-upload");
@@ -547,7 +577,6 @@ $("#btnSave").addEventListener("click", async () => {
 
   for (const photo of photosToSave) {
     const payload = {
-      email: state.email,
       city: state.city, // upserts onto profiles.city; non-fatal if column missing
       source_photo_url: null,
       garments: photo.garments
@@ -564,10 +593,14 @@ $("#btnSave").addEventListener("click", async () => {
           raw_response: g
         }))
     };
+    const token = window._vesti_session && window._vesti_session.access_token;
     try {
       const r = await fetch(SAVE_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: "Bearer " + token } : {})
+        },
         body: JSON.stringify(payload)
       });
       const j = await r.json();
@@ -585,11 +618,8 @@ $("#btnSave").addEventListener("click", async () => {
     return;
   }
 
-  $("#doneSummary").textContent = `${totalSaved} garments saved under ${state.email}.${firstErr ? " (Some photos failed.)" : ""}`;
-
-  // Persist email so app.html can identify this user on /api/get-closet calls.
-  // Replaced by Supabase JWT in #61/#62.
-  try { localStorage.setItem("vesti_email", state.email); } catch (e) { /* private mode */ }
+  const userEmail = (window._vesti_session && window._vesti_session.user && window._vesti_session.user.email) || "your account";
+  $("#doneSummary").textContent = `${totalSaved} garments saved under ${userEmail}.${firstErr ? " (Some photos failed.)" : ""}`;
 
   showStep("step-done");
 });

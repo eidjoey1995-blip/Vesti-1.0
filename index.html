@@ -116,8 +116,42 @@
       transition: opacity 0.15s ease;
       width: 100%;
       max-width: 320px;
+      cursor: pointer;
     }
     .cta:hover { opacity: 0.88; }
+    .cta:disabled { opacity: 0.5; cursor: not-allowed; }
+    .cta-ghost {
+      background: transparent;
+      color: var(--ink);
+      border-color: var(--line);
+    }
+    .auth-input {
+      width: 100%;
+      max-width: 320px;
+      padding: 16px 24px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font-size: 16px;
+      background: #fff;
+      color: var(--ink);
+      display: block;
+      margin-bottom: 10px;
+      font-family: inherit;
+    }
+    .auth-input:focus { outline: none; border-color: var(--ink); }
+    .auth-msg {
+      font-size: 15px;
+      color: var(--muted);
+      margin: 0 0 12px;
+      max-width: 320px;
+    }
+    .auth-err {
+      font-size: 14px;
+      color: #a43030;
+      margin: 8px 0 0;
+      max-width: 320px;
+      display: none;
+    }
     footer {
       margin-top: 56px;
       font-size: 12px;
@@ -143,9 +177,122 @@
         <div class="prop"><span class="dot"></span><p>Tap an occasion. <span>We pull together a look from your own pieces.</span></p></div>
         <div class="prop"><span class="dot"></span><p>Made for Beirut, Dubai, and the diaspora. <span>Climate, dress code, and context built in.</span></p></div>
       </div>
-      <a class="cta" href="/onboarding.html">Get started</a>
+      <div id="auth-section" style="max-width:320px;">
+        <!-- auth-form: default visible state -->
+        <div id="auth-form">
+          <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email" />
+          <button id="auth-btn" class="cta" type="button">Get started →</button>
+        </div>
+        <!-- auth-sent: shown after OTP dispatched -->
+        <div id="auth-sent" style="display:none">
+          <p class="auth-msg">Check your email — magic link sent.</p>
+          <button id="auth-resend" class="cta cta-ghost" type="button">Resend</button>
+        </div>
+        <!-- auth-loading: shown while routing after sign-in -->
+        <div id="auth-loading" style="display:none">
+          <p class="auth-msg">Signing you in…</p>
+        </div>
+        <p id="auth-err" class="auth-err"></p>
+      </div>
     </main>
     <footer>Vesti — invite-only beta</footer>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+  (async function () {
+    let _sb = null;
+
+    function el(id) { return document.getElementById(id); }
+
+    function showState(s) {
+      el("auth-form").style.display    = s === "form"    ? "" : "none";
+      el("auth-sent").style.display    = s === "sent"    ? "" : "none";
+      el("auth-loading").style.display = s === "loading" ? "" : "none";
+    }
+
+    function showErr(msg) {
+      const e = el("auth-err");
+      e.textContent = msg;
+      e.style.display = msg ? "" : "none";
+    }
+
+    async function routeAfterAuth(session) {
+      showState("loading");
+      try {
+        const r = await fetch("/api/get-closet?limit=1", {
+          headers: { Authorization: "Bearer " + session.access_token }
+        });
+        const j = await r.json();
+        const hasGarments = Array.isArray(j.garments) && j.garments.length > 0;
+        window.location.replace(hasGarments ? "/app.html" : "/onboarding.html");
+      } catch (_) {
+        window.location.replace("/onboarding.html");
+      }
+    }
+
+    try {
+      const cfg = await fetch("/api/auth-config").then(r => r.ok ? r.json() : null).catch(() => null);
+      if (!cfg || !cfg.url || !cfg.anonKey) {
+        showErr("Auth config unavailable. Refresh and try again.");
+        return;
+      }
+
+      _sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+
+      // INITIAL_SESSION fires once after the client initialises.
+      // If the URL contains a magic-link ?code=…, the SDK exchanges it
+      // before this event fires (detectSessionInUrl is true by default).
+      _sb.auth.onAuthStateChange(async (event, session) => {
+        if (event === "INITIAL_SESSION") {
+          if (session) {
+            await routeAfterAuth(session);
+          } else {
+            showState("form");
+          }
+        } else if (event === "SIGNED_IN") {
+          await routeAfterAuth(session);
+        }
+      });
+
+    } catch (err) {
+      showState("form");
+      showErr("Couldn't initialise auth. Refresh and try again.");
+      console.error(err);
+    }
+
+    // Send OTP.
+    el("auth-btn").addEventListener("click", async () => {
+      const email = el("auth-email").value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showErr("Enter a valid email address.");
+        return;
+      }
+      if (!_sb) { showErr("Auth not ready — refresh and try again."); return; }
+      showErr("");
+      el("auth-btn").disabled = true;
+      el("auth-btn").textContent = "Sending…";
+      const { error } = await _sb.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: "https://vesti-1-0.vercel.app/" }
+      });
+      el("auth-btn").disabled = false;
+      el("auth-btn").textContent = "Get started →";
+      if (error) {
+        showErr(error.message || "Couldn't send link. Try again.");
+      } else {
+        showState("sent");
+      }
+    });
+
+    // Enter key on email input.
+    el("auth-email").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") el("auth-btn").click();
+    });
+
+    // Resend — go back to form.
+    el("auth-resend").addEventListener("click", () => showState("form"));
+  })();
+  </script>
 </body>
 </html>

@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     });
   }
 
-  const { email, source_photo_url, garments } = req.body || {};
+  const { email, source_photo_url, garments, city } = req.body || {};
 
   if (!email || typeof email !== "string") {
     return res.status(400).json({ error: { code: "missing_email", message: "email is required" } });
@@ -40,6 +40,10 @@ export default async function handler(req, res) {
   if (!Array.isArray(garments) || garments.length === 0) {
     return res.status(400).json({ error: { code: "missing_garments", message: "garments must be a non-empty array" } });
   }
+  // Whitelist city to the BETA cohort cities. Unknown values fall through silently.
+  // Codex assumptions per city flagged in docs/methodology §5b notes (#46).
+  const ALLOWED_CITIES = new Set(["Beirut", "Dubai", "New York"]);
+  const cityClean = (typeof city === "string" && ALLOWED_CITIES.has(city)) ? city : null;
 
   const supabase = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
@@ -68,11 +72,24 @@ export default async function handler(req, res) {
     });
   }
 
-  // Ensure profile row exists (idempotent upsert).
+  // Ensure profile row exists (idempotent upsert). Include city when provided.
+  // If profiles.city column is missing in the DB, the upsert errors — caught + logged
+  // so onboarding still succeeds (garment insert is the user-visible win).
   try {
-    await supabase
+    const profileRow = { id: userId, display_name: email.split("@")[0] };
+    if (cityClean) profileRow.city = cityClean;
+    const { error: profileErr } = await supabase
       .from("profiles")
-      .upsert({ id: userId, display_name: email.split("@")[0] }, { onConflict: "id" });
+      .upsert(profileRow, { onConflict: "id" });
+    if (profileErr) {
+      // If failure is specifically about city column, retry without it so we still create the profile.
+      if (cityClean && /city/i.test(profileErr.message || "")) {
+        delete profileRow.city;
+        await supabase.from("profiles").upsert(profileRow, { onConflict: "id" });
+      } else {
+        console.warn("profile upsert warning:", profileErr.message);
+      }
+    }
   } catch (err) {
     // Non-fatal — keep going.
     console.warn("profile upsert warning:", err?.message || err);

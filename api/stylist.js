@@ -154,26 +154,31 @@ Dark trouser (charcoal/grey/navy), soft button-down shirt (white or pale), no ti
 // is sent, not all three.
 function buildSystemPrompt(city) {
   const overlay = CITY_OVERLAYS[city] || CITY_OVERLAYS.Beirut;
-  return `You are the AI stylist for Vesti, a men's wardrobe app for Lebanese men (and the Lebanese diaspora). You pick outfits from the user's existing closet for a given occasion, grounded in the Vesti methodology codex below.
+  return `You are the AI stylist for Vesti, a men's wardrobe app for Lebanese men (and the Lebanese diaspora). You pick outfits from the user's existing closet for a given occasion, grounded in the Vesti methodology reference below.
 
 CITY CONTEXT (${city || "Beirut — default"}):
 ${overlay}
 
 ${CODEX_OCCASIONS}
 
-PRIORITY RULES (from methodology §5.0 "How to apply"):
-1. If the city is Beirut, use the §5 entry as written.
+PRIORITY RULES:
+1. If the city is Beirut, use the matching entry as written.
 2. If Dubai, apply the Dubai overlay on top — climate weight rule is the highest-priority override (AC-first 250 g/m² indoors).
-3. If New York, apply the NY overlay; for occasions outside the §5 Lebanese-cultural set, surface "we don't have a calibrated default for this in your city yet" in reasoning.
-4. When in doubt between Beirut default and city overlay: climate (fabric weight, layering) wins; everything else (color, register) defers to the §5 entry.
-5. If the user's stated occasion isn't in the codex above, reason from the closest entry + city overlay. Name the gap in reasoning.
+3. If New York, apply the NY overlay; for occasions outside the Lebanese-cultural set, surface "we don't have a calibrated default for this in your city yet" in reasoning.
+4. When in doubt between Beirut default and city overlay: climate (fabric weight, layering) wins; everything else (color, register) defers to the Beirut entry.
+5. If the user's stated occasion isn't covered above, reason from the closest entry + city overlay. Name the gap in reasoning.
+
+USER-FACING TONE FOR `reasoning`:
+- Speak directly to the user as their stylist. Plain language. No jargon.
+- Do NOT use the words "codex," "methodology," "entry," "overlay," "section," or "§". Do not cite internal references.
+- 2-3 sentences max. Mention the occasion and why these pieces work for it.
 
 OUTPUT FORMAT (strict JSON only — no prose, no markdown fences):
 {
   "items": [
     { "garment_id": "<id from closet>", "role": "top|bottom|layer|shoe|accessory" }
   ],
-  "reasoning": "2-3 sentence explanation tied to the codex entry + city overlay you applied. Cite the entry name when applicable."
+  "reasoning": "2-3 sentence stylist note in plain language."
 }
 
 OUTPUT RULES:
@@ -328,7 +333,14 @@ export default async function handler(req, res) {
     const role = typeof it.role === "string" ? it.role : null;
     items.push({ garment_id: gid, role });
   }
-  const reasoning = typeof parsed?.reasoning === "string" ? parsed.reasoning : "";
+  // Belt-and-suspenders: strip any internal jargon Claude leaked into user-facing text.
+  const rawReasoning = typeof parsed?.reasoning === "string" ? parsed.reasoning : "";
+  const reasoning = rawReasoning
+    .replace(/\b(the\s+)?codex(\s+(entry|section|reference))?\b/gi, "this kind of occasion")
+    .replace(/\bmethodology\b/gi, "guide")
+    .replace(/§\s*\d+(\.\d+)?/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
   // === Increment 4: persist outfit so swipes (#53) can reference it later ===
   // Non-fatal: a persistence failure shouldn't block the user from seeing

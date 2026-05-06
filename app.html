@@ -629,6 +629,7 @@
       margin-bottom: 6px;
     }
     .piece-thumb svg { width: 60%; height: 60%; opacity: 0.8; }
+    .piece-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
     .piece-label {
       font-size: 10px;
       color: var(--ink-mid);
@@ -2343,12 +2344,12 @@
                 <div class="kv" hidden><span class="kv-k" data-i18n="kv_worn">Worn</span><span class="kv-v" data-i18n="val_worn">6 times · AED 65/wear</span></div>
               </div>
 
-              <div class="spacer"></div>
-              <p class="h-eyebrow" data-i18n="item_pairs">Pairs well with</p>
-              <div class="outfit-pieces" style="margin-top:0">
-                <div class="piece"><div class="piece-thumb"><svg viewBox="0 0 50 60"><use href="#g-trouser" data-use-f="#g-trouser" data-use-m="#g-trouser"/></svg></div><div class="piece-label" data-i18n="p_olive">Olive trousers</div></div>
-                <div class="piece"><div class="piece-thumb"><svg viewBox="0 0 50 60"><use href="#g-shoe" data-use-f="#g-shoe" data-use-m="#g-derby"/></svg></div><div class="piece-label" data-i18n="p_loaf">Tan loafers</div></div>
-                <div class="piece"><div class="piece-thumb"><svg viewBox="0 0 50 60"><use href="#g-skirt" data-use-f="#g-skirt" data-use-m="#g-chinos"/></svg></div><div class="piece-label" data-i18n="p_denim">Denim skirt</div></div>
+              <!-- BETA: "Pairs well with" section — populated dynamically from /api/pair-garment. -->
+              <div id="item-pairs-section" style="display:none">
+                <div class="spacer"></div>
+                <p class="h-eyebrow" data-i18n="item_pairs">Pairs well with</p>
+                <p id="item-pairs-loading" style="font-size:12px;color:var(--ink-mid);margin:6px 0 0;" data-i18n="item_pairs_loading">Finding pairs…</p>
+                <div id="item-pairs-list" class="outfit-pieces" style="margin-top:8px;display:none;"></div>
               </div>
 
               <div class="spacer"></div>
@@ -3114,6 +3115,7 @@
         kv_bought: "Bought", kv_worn: "Worn",
         val_cream: "Cream", val_date: "14 Feb", val_worn: "6 times · AED 65/wear",
         item_pairs: "Pairs well with",
+        item_pairs_loading: "Finding pairs…",
         item_style_with: "Style with this piece",
         item_delete: "Delete garment",
         item_delete_confirm: "Delete this garment? This can't be undone.",
@@ -3345,6 +3347,7 @@
         kv_bought: "تاريخ الشراء", kv_worn: "الارتداء",
         val_cream: "كريمي", val_date: "١٤ فبراير", val_worn: "٦ مرات · 65 درهم/مرة",
         item_pairs: "يُنسّق جيداً مع",
+        item_pairs_loading: "جارٍ إيجاد التنسيقات…",
         item_style_with: "صمّم إطلالة بهذه القطعة",
         item_delete: "حذف القطعة",
         item_delete_confirm: "حذف هذه القطعة؟ لا يمكن التراجع عن ذلك.",
@@ -4037,8 +4040,8 @@
       // Colour KV
       const colour = root.querySelector('[data-i18n="val_cream"]');
       if (colour && g.color) colour.textContent = g.color.replace(/^./, c => c.toUpperCase());
-      // Show colour KV row even though sibling rows are `hidden`.
       // Source badge stays on its EN/AR i18n string ("From your photo").
+      loadPairs(g);
     }
 
     // Capture clicks on closet tiles (with data-garment-id) to stash the chosen garment
@@ -4089,6 +4092,75 @@
         } finally {
           deleteBtn.disabled = false;
         }
+      });
+    }
+
+    // -------- Pairs well with wiring --------
+    // Fires on every item-detail open. Uses Haiku for speed; hides the section
+    // silently on error or empty result.
+    const PAIR_ENDPOINT = "/api/pair-garment";
+
+    async function loadPairs(garment) {
+      const section = document.getElementById("item-pairs-section");
+      const loadingEl = document.getElementById("item-pairs-loading");
+      const list = document.getElementById("item-pairs-list");
+      if (!section || !loadingEl || !list) return;
+
+      const requestId = garment.id;
+
+      // Reset to loading state.
+      section.style.display = "";
+      loadingEl.style.display = "";
+      list.style.display = "none";
+      list.innerHTML = "";
+
+      try {
+        const r = await fetch(PAIR_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+          body: JSON.stringify({ garment_id: garment.id })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
+
+        // Stale-response guard: user may have navigated to a different garment.
+        if (state.currentGarment?.id !== requestId) return;
+
+        const pairs = Array.isArray(j.pairs) ? j.pairs : [];
+        if (pairs.length === 0) { section.style.display = "none"; return; }
+
+        list.innerHTML = pairs.map(p => {
+          const g = closetState.garments.find(x => x.id === p.garment_id) || {};
+          const sym = symbolFor(g.category);
+          const thumb = g.thumb_url
+            ? `<img src="${(g.thumb_url || "").replace(/"/g, "&quot;")}" alt="" loading="lazy">`
+            : `<svg viewBox="0 0 50 60"><use href="#${sym}"/></svg>`;
+          const label = String(p.reason || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+          return `<div class="piece" data-pair-garment-id="${p.garment_id}" style="cursor:pointer;">`
+            + `<div class="piece-thumb">${thumb}</div>`
+            + `<div class="piece-label">${label}</div>`
+            + `</div>`;
+        }).join("");
+        loadingEl.style.display = "none";
+        list.style.display = "";
+      } catch (err) {
+        if (state.currentGarment?.id !== requestId) return;
+        section.style.display = "none";
+        console.warn("pair-garment error:", err);
+      }
+    }
+
+    // One-time click handler for pair tiles — navigates to the tapped garment.
+    const pairsListEl = document.getElementById("item-pairs-list");
+    if (pairsListEl) {
+      pairsListEl.addEventListener("click", e => {
+        const tile = e.target.closest("[data-pair-garment-id]");
+        if (!tile) return;
+        const gid = tile.getAttribute("data-pair-garment-id");
+        const found = closetState.garments.find(x => x.id === gid);
+        if (!found) return;
+        populateItemDetail(found);
+        setScreen("item-detail");
       });
     }
 

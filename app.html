@@ -2252,6 +2252,9 @@
               <div class="closet-tile moss"><svg viewBox="0 0 50 60"><use href="#g-watch" data-use-f="#g-watch" data-use-m="#g-watch"/></svg><span class="tile-brand"></span></div>
             </div>
             <div style="text-align:center; padding:18px 24px 8px; font-size:12px; color:var(--ink-mid)" data-i18n="closet_more">Showing 9 of 32 · scroll, filter, edit</div>
+            <div style="padding:4px 24px 24px;">
+              <button class="btn btn-ghost btn-block" data-i18n="closet_add_garments" onclick="location.href='/onboarding.html?add=true'">Add garments</button>
+            </div>
           </section>
 
           <!-- =========================================== CLOSET GAPS -->
@@ -2320,7 +2323,7 @@
                 <!-- BETA: brand KV row hidden — receipt-forwarding (which populates it) is post-V1. -->
                 <div class="kv" hidden><span class="kv-k" data-i18n="kv_brand">Brand</span><span class="kv-v" data-persona-brand="item"></span></div>
                 <div class="kv"><span class="kv-k" data-i18n="kv_color">Colour</span><span class="kv-v" data-i18n="val_cream">Cream</span></div>
-                <div class="kv"><span class="kv-k" data-i18n="kv_size">Size</span><span class="kv-v">M</span></div>
+                <div class="kv" hidden><span class="kv-k" data-i18n="kv_size">Size</span><span class="kv-v">M</span></div>
                 <!-- BETA: paid + bought + worn rows hidden — populated by receipt-forwarding (post-V1). -->
                 <div class="kv" hidden><span class="kv-k" data-i18n="kv_price">Paid</span><span class="kv-v" data-price-aed="395">AED 395</span></div>
                 <div class="kv" hidden><span class="kv-k" data-i18n="kv_bought">Bought</span><span class="kv-v" data-i18n="val_date">14 Feb</span></div>
@@ -2601,7 +2604,7 @@
               </div>
               <span class="chev">›</span>
             </div>
-            <div class="list-row" data-goto="currency-picker">
+            <div class="list-row" data-goto="currency-picker" style="display:none">
               <div>
                 <div class="list-row-label" data-i18n="set_currency">Currency</div>
                 <div class="list-row-meta" id="currency-indicator">AED · United Arab Emirates Dirham</div>
@@ -2803,7 +2806,7 @@
           </section>
 
           <!-- =========================================== CURRENCY PICKER -->
-          <section class="screen" data-screen="currency-picker">
+          <section class="screen" data-screen="currency-picker" style="display:none">
             <div class="screen-top">
               <button class="icon-btn" data-goto="profile" aria-label="Back">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -3061,6 +3064,7 @@
         filter_all: "All", filter_tops: "Tops", filter_bottoms: "Bottoms", filter_dresses: "Dresses",
         filter_outer: "Outerwear", filter_shoes: "Shoes", filter_acc: "Accessories",
         closet_more: "Showing 9 of 32 · scroll, filter, edit",
+        closet_add_garments: "Add garments",
         // Closet gaps
         gaps_step: "Closet analysis · 28 days",
         gaps_eyebrow: "4 gaps · ranked by impact",
@@ -3289,6 +3293,7 @@
         filter_all: "الكل", filter_tops: "أعلى", filter_bottoms: "أسفل", filter_dresses: "فساتين",
         filter_outer: "معاطف", filter_shoes: "أحذية", filter_acc: "إكسسوارات",
         closet_more: "عرض 9 من 32 · مرّر، فلتر، حرّر",
+        closet_add_garments: "إضافة ملابس",
         // Closet gaps
         gaps_step: "تحليل الخزانة · ٢٨ يوماً",
         gaps_eyebrow: "٤ فجوات · مرتّبة بحسب الأثر",

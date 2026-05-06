@@ -284,15 +284,18 @@
         else if (sess) { window._vesti_session = sess; }
       });
 
-      // Dedup: user already has garments → skip to app.
-      const r = await fetch("/api/get-closet?limit=1", {
-        headers: { Authorization: "Bearer " + session.access_token }
-      });
-      if (r.ok) {
-        const j = await r.json();
-        if (Array.isArray(j.garments) && j.garments.length > 0) {
-          window.location.replace("/app.html");
-          return;
+      // Dedup: user already has garments → skip to app, unless ?add=true (explicit add-more flow).
+      const addMode = new URLSearchParams(window.location.search).get("add") === "true";
+      if (!addMode) {
+        const r = await fetch("/api/get-closet?limit=1", {
+          headers: { Authorization: "Bearer " + session.access_token }
+        });
+        if (r.ok) {
+          const j = await r.json();
+          if (Array.isArray(j.garments) && j.garments.length > 0) {
+            window.location.replace("/app.html");
+            return;
+          }
         }
       }
 

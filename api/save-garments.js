@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import sharp from "sharp";
 
 // =========================================================
 // POST /api/save-garments
@@ -46,7 +47,7 @@ export default async function handler(req, res) {
   const { userId, email, err } = await resolveUser(req, supabase);
   if (err) return res.status(401).json({ error: err });
 
-  const { source_photo_url, garments, city } = req.body || {};
+  const { source_photo_url, garments, city, photoBase64 } = req.body || {};
 
   if (!Array.isArray(garments) || garments.length === 0) {
     return res.status(400).json({ error: { code: "missing_garments", message: "garments must be a non-empty array" } });
@@ -75,6 +76,50 @@ export default async function handler(req, res) {
     console.warn("profile upsert warning:", e?.message || e);
   }
 
+  // Crop garment thumbnails from the source flatlay when a base64 image is provided.
+  const thumbUrls = {};
+  if (photoBase64 && typeof photoBase64 === "string") {
+    try {
+      const imgBuf = Buffer.from(photoBase64, "base64");
+      const meta = await sharp(imgBuf).metadata();
+      const imgW = meta.width || 1;
+      const imgH = meta.height || 1;
+
+      for (let i = 0; i < garments.length; i++) {
+        const g = garments[i];
+        const bbox = g.raw_response?.bbox || g.bbox;
+        if (!bbox || typeof bbox.x !== "number") continue;
+        try {
+          const left   = Math.max(0, Math.round(bbox.x * imgW));
+          const top    = Math.max(0, Math.round(bbox.y * imgH));
+          const width  = Math.min(imgW - left, Math.max(1, Math.round(bbox.w * imgW)));
+          const height = Math.min(imgH - top,  Math.max(1, Math.round(bbox.h * imgH)));
+          const crop = await sharp(imgBuf)
+            .extract({ left, top, width, height })
+            .resize(400, 400, { fit: "cover", position: "centre" })
+            .jpeg({ quality: 82 })
+            .toBuffer();
+
+          const fileName = `${userId}/${Date.now()}_${i}.jpg`;
+          const { error: upErr } = await supabase.storage
+            .from("garment-thumbs")
+            .upload(fileName, crop, { contentType: "image/jpeg", upsert: false });
+
+          if (!upErr) {
+            const { data: { publicUrl } } = supabase.storage
+              .from("garment-thumbs")
+              .getPublicUrl(fileName);
+            thumbUrls[i] = publicUrl;
+          }
+        } catch (cropErr) {
+          console.warn(`thumb crop failed for garment ${i}:`, cropErr.message);
+        }
+      }
+    } catch (imgErr) {
+      console.warn("thumb generation skipped:", imgErr.message);
+    }
+  }
+
   const rows = garments.map((g, i) => ({
     user_id: userId,
     category: g.category ?? "other",
@@ -88,7 +133,8 @@ export default async function handler(req, res) {
     brand: g.brand ?? null,
     source_photo_url: source_photo_url ?? null,
     raw_response: g.raw_response ?? g,
-    segment_index: i
+    segment_index: i,
+    thumb_url: thumbUrls[i] ?? null,
   }));
 
   const { data, error } = await supabase

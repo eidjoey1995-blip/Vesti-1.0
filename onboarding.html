@@ -582,6 +582,7 @@ $("#btnSave").addEventListener("click", async () => {
     const payload = {
       city: state.city, // upserts onto profiles.city; non-fatal if column missing
       source_photo_url: null,
+      photoBase64: photo.smallBase64 ?? null,
       garments: photo.garments
         .filter(g => g._kept)
         .map(g => ({

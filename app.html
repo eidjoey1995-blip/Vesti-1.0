@@ -11,6 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
+    /* Enforce HTML hidden attribute even when author CSS sets display:flex/grid */
+    [hidden] { display: none !important; }
+
     /* ==========================================================
        VESTI — Visual Identity tokens
        60% cream · 25% sage/forest · 10% terracotta · 5% ink
@@ -680,6 +683,13 @@
       transform: translate(-50%, -55%);
       width: 70%; height: 70%;
       opacity: 0.80;
+    }
+    .closet-tile .tile-thumb {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
     }
     .closet-tile .tile-brand {
       position: relative;
@@ -2233,13 +2243,13 @@
             </div>
 
             <div class="closet-filters">
-              <div class="chip active" data-i18n="filter_all">All</div>
-              <div class="chip" data-i18n="filter_tops">Tops</div>
-              <div class="chip" data-i18n="filter_bottoms">Bottoms</div>
-              <div class="chip" data-i18n="filter_dresses">Dresses</div>
-              <div class="chip" data-i18n="filter_outer">Outerwear</div>
-              <div class="chip" data-i18n="filter_shoes">Shoes</div>
-              <div class="chip" data-i18n="filter_acc">Accessories</div>
+              <div class="chip active" data-i18n="filter_all" data-filter="all">All</div>
+              <div class="chip" data-i18n="filter_tops" data-filter="tops">Tops</div>
+              <div class="chip" data-i18n="filter_bottoms" data-filter="bottoms">Bottoms</div>
+              <div class="chip" data-i18n="filter_dresses" data-filter="suits">Dresses</div>
+              <div class="chip" data-i18n="filter_outer" data-filter="outer">Outerwear</div>
+              <div class="chip" data-i18n="filter_shoes" data-filter="shoes">Shoes</div>
+              <div class="chip" data-i18n="filter_acc" data-filter="acc">Accessories</div>
             </div>
 
             <div class="closet-grid">
@@ -3630,6 +3640,26 @@
     // Cycle the existing palette accent classes for visual rhythm in the grid.
     const TILE_ACCENTS = ["", "sage", "moss", "", "rose", "", "sage", "", "moss"];
 
+    // Category filter map: chip data-filter value → list of category substrings to match.
+    const FILTER_CATS = {
+      tops:    ["shirt", "tshirt", "tee", "polo", "blouse", "top", "overshirt", "vest", "sweater", "cardigan", "jumper", "tank", "camisole", "henley", "knitwear"],
+      bottoms: ["trouser", "pant", "chino", "jean", "denim", "short", "skirt", "legging"],
+      suits:   ["suit", "tuxedo", "blazer", "jacket", "coat", "tailored"],
+      outer:   ["outerwear", "parka", "raincoat", "anorak", "windbreaker"],
+      shoes:   ["shoe", "sneaker", "boot", "loafer", "derby", "oxford", "heel", "sandal", "flat", "mule", "slipper"],
+      acc:     ["bag", "tote", "briefcase", "watch", "accessory", "belt", "tie", "hat", "cap", "scarf", "jewel", "ring", "necklace", "bracelet", "earring", "cufflink", "wallet"],
+    };
+    let closetFilter = "all";
+
+    function filterGarments(garments) {
+      if (closetFilter === "all" || !FILTER_CATS[closetFilter]) return garments;
+      const keys = FILTER_CATS[closetFilter];
+      return garments.filter(g => {
+        const cat = (g.category || "").toLowerCase();
+        return keys.some(k => cat.includes(k));
+      });
+    }
+
     function symbolFor(category) {
       const k = (category || "").toLowerCase().trim();
       return CATEGORY_TO_SYMBOL[k] || "g-shirt";
@@ -3702,21 +3732,23 @@
 
     function renderClosetGrid(grid, more, garments) {
       setStat("stat-items", garments.length);
-      grid.innerHTML = garments.map((g, i) => {
+      const visible = filterGarments(garments);
+      grid.innerHTML = visible.map((g, i) => {
         const accent = TILE_ACCENTS[i % TILE_ACCENTS.length];
         const sym = symbolFor(g.category);
-        const label = tileLabel(g);
-        const labelEsc = label.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-        // data-garment-id wires the click → item-detail population.
+        const thumb = g.thumb_url
+          ? `<img class="tile-thumb" src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy">`
+          : `<svg viewBox="0 0 50 60"><use href="#${sym}"/></svg>`;
         return `<div class="closet-tile ${accent}" data-goto="item-detail" data-garment-id="${g.id}">`
-          + `<svg viewBox="0 0 50 60"><use href="#${sym}"/></svg>`
-          + `<span class="tile-brand">${labelEsc}</span>`
+          + thumb
           + `</div>`;
       }).join("");
-      // Footer count (replaces "Showing 9 of 32 · scroll, filter, edit" placeholder).
       if (more) {
-        const n = garments.length;
-        more.textContent = `${n} ${n === 1 ? "item" : "items"}`;
+        const total = garments.length;
+        const shown = visible.length;
+        more.textContent = shown < total
+          ? `${shown} of ${total} items`
+          : `${total} ${total === 1 ? "item" : "items"}`;
       }
     }
 
@@ -4162,11 +4194,17 @@
         reset();
         return;
       }
-      // Chip filters (closet) — visual-only
+      // Chip filters (closet) — update active state and re-render grid
       const chip = e.target.closest(".closet-filters .chip");
       if (chip) {
         chip.parentElement.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
         chip.classList.add("active");
+        closetFilter = chip.dataset.filter || "all";
+        if (closetState.loaded) {
+          const grid = document.querySelector('section[data-screen="closet"] .closet-grid');
+          const more = document.querySelector('section[data-screen="closet"] [data-i18n="closet_more"]');
+          renderClosetGrid(grid, more, closetState.garments);
+        }
       }
     });
 

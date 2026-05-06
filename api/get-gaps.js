@@ -12,41 +12,40 @@ import { createClient } from "@supabase/supabase-js";
 //   SUPABASE_SERVICE_KEY
 // =========================================================
 
+// Terms must match the category values that segment-garments instructs Claude to return:
+// "shirt" | "tshirt" | "polo" | "sweater" | "jacket" | "blazer" | "coat" |
+// "pants" | "jeans" | "chinos" | "shorts" | "shoes" | "sneakers" | "boots" |
+// "accessory" | "other"
 const FOUNDATIONAL_MEN = [
   {
-    category: "shirt",
-    aliases: ["overshirt"],
+    terms: ["shirt", "tshirt", "polo", "sweater"],
     expected: 3,
     title: "Foundational shirts.",
-    why: "A foundational closet starts at three shirts so you can rotate without the same one twice in a week. Add solid white, light blue, and a softer neutral and 80% of the calendar is covered."
+    why: "A rotation of three shirts covers a working week without repetition — one white, one light blue, one neutral. Those three alongside the trousers you already own cover 80% of the calendar without a new outfit."
   },
   {
-    category: "trouser",
-    aliases: ["trousers", "chinos", "pants"],
+    terms: ["pants", "chinos", "jeans", "shorts"],
     expected: 2,
     title: "Two-pair trouser base.",
-    why: "One pair of trousers means you wear them every other day. Two — one tailored, one casual chino — and they each last twice as long while doubling your outfit count."
+    why: "One tailored chino and one casual jean double your outfit count and halve wear on both. The minimum for a working wardrobe that rotates cleanly."
   },
   {
-    category: "blazer",
-    aliases: ["jacket", "suit", "overshirt"],
+    terms: ["blazer", "jacket", "coat"],
     expected: 1,
-    title: "One layer that finishes a look.",
-    why: "An overshirt or unstructured blazer is the difference between dressed and put-together. One piece, navy or oat, layers over almost everything you already own."
+    title: "No mid-layer.",
+    why: "An unstructured blazer or jacket is the piece that moves an outfit from casual to put-together. One piece — navy or sand — layers over almost everything in the closet and doubles the read of every shirt you own."
   },
   {
-    category: "shoe",
-    aliases: ["shoes", "derby", "oxford", "loafer"],
+    terms: ["shoes", "sneakers", "boots"],
     expected: 2,
     title: "Two-shoe rotation.",
-    why: "One smart pair (derby or loafer) and one casual (sneaker or suede) covers every occasion in the codex without compromise on either side."
+    why: "One smart pair (loafer or derby) and one clean sneaker cover every occasion in the codex. Without both, you're either overdressed or underdressed — no middle ground for brunch-to-boardroom days."
   },
   {
-    category: "watch",
-    aliases: ["accessory"],
+    terms: ["accessory"],
     expected: 1,
-    title: "A finishing detail.",
-    why: "A single watch (or steel cufflinks) reads finished across 70% of the closet. Small piece, large signal — especially for client-facing days."
+    title: "No finishing detail.",
+    why: "A watch, bracelet, or steel cufflinks reads finished across 70% of the closet. Small piece, large signal — especially on client-facing days where every visible detail lands."
   }
 ];
 
@@ -111,10 +110,13 @@ export default async function handler(req, res) {
 function buildGaps(counts) {
   const out = [];
   for (const f of FOUNDATIONAL_MEN) {
-    let have = counts.get(f.category) || 0;
-    for (const a of f.aliases || []) have += counts.get(a) || 0;
+    const termSet = new Set(f.terms);
+    let have = 0;
+    for (const [k, v] of counts) {
+      if (termSet.has(k)) have += v;
+    }
     if (have < f.expected) {
-      out.push({ category: f.category, current: have, expected: f.expected, title: f.title, why: f.why });
+      out.push({ category: f.terms[0], current: have, expected: f.expected, title: f.title, why: f.why });
     }
   }
   return out;

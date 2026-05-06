@@ -1213,6 +1213,8 @@
       color: var(--ink);
       white-space: nowrap;
     }
+    /* BETA: prices hidden everywhere */
+    .product-price, .extracted-price { display: none; }
 
     /* ==========================================================
        Bulk photo — flat lay with AI bounding boxes
@@ -3437,7 +3439,6 @@
           // Item detail — BETA: brandless. Source attribution to "your photo" (auto-segmented), no merchant.
           source_receipt: "From your photo",
           category_shirt: "Linen overshirt",
-          item_name: "Oat linen overshirt, relaxed.",
           val_cream: "Oat", val_date: "14 Feb",
           // Today result
           tag_shirt: "Linen overshirt", tag_shoe: "Derby shoes",
@@ -3447,7 +3448,6 @@
           p_silk: "Tailored shirt · feed", p_heels: "Derbies", p_gold: "Steel cufflinks",
           p_denim: "Chinos",
           // Feed product names
-          prod_1_n: "Oat linen overshirt, relaxed.",
           prod_3_n: "Navy two-piece suit.",
           prod_4_n: "Made-to-measure suit, midnight.",
           prod_5_n: "Leather briefcase, oat.",
@@ -3541,7 +3541,7 @@
 
     // -------- State --------
     // BETA: male-only cohort. Default persona forced to "m"; persona toggle is hidden.
-    const state = { screen: "welcome", lang: "en", persona: "m", currency: "AED" };
+    const state = { screen: "welcome", lang: "en", persona: "m", currency: "AED", currentGarment: null };
 
     // -------- DOM refs --------
     const html = document.documentElement;
@@ -3575,6 +3575,8 @@
     // -------- Functions --------
     function setScreen(id) {
       if (!id) return;
+      // Guard: item-detail requires a garment in state; redirect to closet if none (e.g. direct nav or refresh).
+      if (id === "item-detail" && !state.currentGarment) { id = "closet"; }
       state.screen = id;
       screens.forEach(s => s.classList.toggle("active", s.dataset.screen === id));
       // Tab nav visibility
@@ -3979,6 +3981,7 @@
     // then populate the item-detail screen.
     function populateItemDetail(g) {
       if (!g) return;
+      state.currentGarment = g;
       const root = document.querySelector('section[data-screen="item-detail"]');
       if (!root) return;
       // Hero SVG → swap to the right symbol
@@ -4213,9 +4216,7 @@
       // Honour inbound deep link (e.g. /app.html#closet from onboarding redirect).
       // Logged-in users skip the welcome screen unless it's explicitly hashed.
       const initialHash = (window.location.hash || "").replace(/^#/, "");
-      const startScreen = VISIBLE_SCREENS.has(initialHash)
-        ? initialHash
-        : (initialHash ? "welcome" : "closet");
+      const startScreen = VISIBLE_SCREENS.has(initialHash) ? initialHash : "closet";
 
       setLang("en");
       applyPersona();

@@ -2353,6 +2353,10 @@
 
               <div class="spacer"></div>
               <button class="btn btn-primary btn-block" data-goto="stylist" data-i18n="item_style_with">Style with this piece</button>
+              <div style="height:10px"></div>
+              <button class="btn btn-ghost btn-block" id="item-delete-btn" data-i18n="item_delete">Delete garment</button>
+              <p id="item-delete-error" style="display:none; color:var(--err); font-size:12px; text-align:center; margin:8px 0 0;" data-i18n="item_delete_err">Delete failed. Try again.</p>
+              <div style="height:16px"></div>
             </div>
           </section>
 
@@ -3111,6 +3115,9 @@
         val_cream: "Cream", val_date: "14 Feb", val_worn: "6 times · AED 65/wear",
         item_pairs: "Pairs well with",
         item_style_with: "Style with this piece",
+        item_delete: "Delete garment",
+        item_delete_confirm: "Delete this garment? This can't be undone.",
+        item_delete_err: "Delete failed. Try again.",
         // Stylist
         stylist_eyebrow: "AI Stylist",
         stylist_h: "For the meeting, for iftar, for Tuesday.",
@@ -3339,6 +3346,9 @@
         val_cream: "كريمي", val_date: "١٤ فبراير", val_worn: "٦ مرات · 65 درهم/مرة",
         item_pairs: "يُنسّق جيداً مع",
         item_style_with: "صمّم إطلالة بهذه القطعة",
+        item_delete: "حذف القطعة",
+        item_delete_confirm: "حذف هذه القطعة؟ لا يمكن التراجع عن ذلك.",
+        item_delete_err: "فشل الحذف. حاول مجدداً.",
         stylist_eyebrow: "المصمم الذكي",
         stylist_h: "للاجتماع، للإفطار، ليوم الثلاثاء.",
         stylist_lead: "اختر مناسبة. ندمج خزانتك مع ثلاث قطع من الفيد.",
@@ -4041,6 +4051,46 @@
       const g = closetState.garments.find(x => x.id === id);
       if (g) populateItemDetail(g);
     }, true);
+
+    // Delete garment handler — wired to the button in item-detail.
+    const deleteBtn = document.getElementById("item-delete-btn");
+    const deleteErr = document.getElementById("item-delete-error");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", async () => {
+        const g = state.currentGarment;
+        if (!g) return;
+
+        const dict = i18n[state.lang] || i18n.en;
+        const confirmMsg = dict.item_delete_confirm || "Delete this garment? This can't be undone.";
+        if (!window.confirm(confirmMsg)) return;
+
+        deleteBtn.disabled = true;
+        if (deleteErr) deleteErr.style.display = "none";
+
+        try {
+          const r = await fetch("/api/delete-garment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify({ garment_id: g.id })
+          });
+          const json = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(json?.error?.message || ("HTTP " + r.status));
+
+          // Remove from local cache and refresh the grid.
+          closetState.garments = closetState.garments.filter(x => x.id !== g.id);
+          state.currentGarment = null;
+          setScreen("closet");
+          const grid = document.querySelector('section[data-screen="closet"] .closet-grid');
+          const more = document.querySelector('section[data-screen="closet"] [data-i18n="closet_more"]');
+          if (grid) renderClosetGrid(grid, more, closetState.garments);
+        } catch (err) {
+          if (deleteErr) deleteErr.style.display = "";
+          console.error("delete-garment error:", err);
+        } finally {
+          deleteBtn.disabled = false;
+        }
+      });
+    }
 
     // Overwrite the profile tile with live session data so the persona/i18n
     // demo values ("Karim", "Leila") are never visible to real users.

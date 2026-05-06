@@ -690,6 +690,7 @@
       background: rgba(250,247,242,0.85);
       padding: 2px 6px;
       border-radius: 6px;
+      display: none; /* BETA: labels hidden */
     }
     .closet-tile.sage { background: var(--card-sage); }
     .closet-tile.moss { background: var(--moss); }
@@ -2225,7 +2226,7 @@
               <!-- BETA: Items count populated by loadCloset(); Gaps populated by loadGaps().
                    "Worn · 30d" stays static until the worn-items log ships post-V1. -->
               <div class="stat"><div class="stat-num" id="stat-items">—</div><div class="stat-label" data-i18n="stat_items">Items</div></div>
-              <div class="stat"><div class="stat-num">—</div><div class="stat-label" data-i18n="stat_worn">Worn · 30d</div></div>
+              <div class="stat" style="display:none"><div class="stat-num">—</div><div class="stat-label" data-i18n="stat_worn">Worn · 30d</div></div>
               <div class="stat" data-goto="closet-gaps"><div class="stat-num" id="stat-gaps">—</div><div class="stat-label" data-i18n="stat_gaps">Gaps found</div></div>
             </div>
 

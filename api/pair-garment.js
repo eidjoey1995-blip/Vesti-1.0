@@ -22,15 +22,42 @@ const MAX_CANDIDATES = 40;
 
 const GARMENT_COLUMNS = "id, category, subcategory, color, description, thumb_url, created_at";
 
-const PAIR_SYSTEM = `You are a wardrobe stylist. Given a target garment and a closet, pick 2-3 garments that pair well with the target. Ground picks in colour harmony, formality match, and occasion versatility for a Lebanese man.
+// Category groups used to enforce cross-category pairing in the prompt and post-filter.
+const CAT_GROUPS = {
+  shirt: "top", tshirt: "top", polo: "top", sweater: "top",
+  pants: "bottom", jeans: "bottom", chinos: "bottom", shorts: "bottom",
+  blazer: "layer", jacket: "layer", coat: "layer",
+  shoes: "shoe", sneakers: "shoe", boots: "shoe",
+  accessory: "accessory"
+};
+
+function catGroup(category) {
+  return CAT_GROUPS[(category || "").toLowerCase().trim()] || "other";
+}
+
+const PAIR_SYSTEM = `You are a wardrobe stylist. Given a target garment, build a complementary outfit by picking 2-3 garments from DIFFERENT category groups than the target. Ground picks in colour harmony, formality match, and occasion versatility for a Lebanese man.
+
+Category groups:
+- top: shirt, tshirt, polo, sweater
+- bottom: pants, jeans, chinos, shorts
+- layer: blazer, jacket, coat
+- shoe: shoes, sneakers, boots
+- accessory: accessory
+
+Cross-category pairing rules (STRICT — never return the same group as the target):
+- target is a top    → pick from bottom + shoe (optionally add layer or accessory)
+- target is a bottom → pick from top + shoe (optionally add layer)
+- target is a layer  → pick from top + bottom + shoe
+- target is shoes    → pick from top + bottom
+- target is accessory → pick from top + bottom or shoe
 
 Return strict JSON only — no prose, no markdown fences:
 { "pairs": [{ "garment_id": "...", "reason": "one sentence under 8 words" }] }
 
-Rules:
+Additional rules:
 - garment_id MUST be an id from the closet list. Do not invent ids.
-- reason: what it adds to the pairing, 8 words max.
-- Return 2-3 pairs. If fewer than 2 candidates exist, return fewer.`;
+- reason: what it adds to the outfit, 8 words max.
+- Return 2-3 pairs. If fewer candidates exist, return fewer.`;
 
 async function resolveUser(req, supabase) {
   const auth = (req.headers.authorization || "").trim();
@@ -136,14 +163,18 @@ export default async function handler(req, res) {
     });
   }
 
-  // Hallucination guard: only pass back ids that exist in the candidate set.
+  // Hallucination guard + same-category filter.
   const candidateIds = new Set(candidates.map(g => String(g.id)));
+  const candidateById = new Map(candidates.map(g => [String(g.id), g]));
+  const targetGroup = catGroup(target.category);
   const rawPairs = Array.isArray(parsed?.pairs) ? parsed.pairs : [];
   const pairs = [];
   for (const p of rawPairs) {
     if (!p || typeof p !== "object") continue;
     const gid = p.garment_id != null ? String(p.garment_id) : null;
     if (!gid || !candidateIds.has(gid)) continue;
+    // Drop same-category-group suggestions regardless of what the LLM returned.
+    if (catGroup(candidateById.get(gid)?.category) === targetGroup) continue;
     const reason = typeof p.reason === "string" ? p.reason.trim() : "";
     pairs.push({ garment_id: gid, reason });
     if (pairs.length >= 3) break;

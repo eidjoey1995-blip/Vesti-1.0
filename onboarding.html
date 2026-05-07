@@ -218,6 +218,13 @@
 
     <!-- STEP 2: upload + review -->
     <section id="step-upload" class="step">
+      <!-- Back button — visible only in ?add=true mode; wired in JS below. -->
+      <div id="ob-back" style="display:none; margin:0 0 16px;">
+        <button class="btn ghost" id="ob-back-btn" aria-label="Back to closet" style="padding:8px 12px; font-size:14px; gap:6px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to closet
+        </button>
+      </div>
       <h1>Your closet, item by item</h1>
       <p class="sub">Add a photo. We'll find the garments. Remove any false hits before saving.</p>
 
@@ -335,6 +342,16 @@ function $$(s) { return [...document.querySelectorAll(s)]; }
 function showStep(id) {
   $$(".step").forEach(el => el.classList.remove("active"));
   $("#" + id).classList.add("active");
+}
+
+// When ?add=true: skip welcome, land on upload, show back button.
+const addMode = new URLSearchParams(window.location.search).get("add") === "true";
+if (addMode) {
+  showStep("step-upload");
+  const backWrap = document.getElementById("ob-back");
+  if (backWrap) backWrap.style.display = "";
+  const backBtn = document.getElementById("ob-back-btn");
+  if (backBtn) backBtn.addEventListener("click", () => { window.location.href = "/app.html#closet"; });
 }
 
 function toast(msg, ms = 2400) {

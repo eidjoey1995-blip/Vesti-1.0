@@ -2399,6 +2399,7 @@
                 </div>
               </div>
             </div>
+            <p style="text-align:center; color:var(--ink-mid); font-size:13px; padding:16px 24px 8px; margin:0;" data-i18n="stylist_pick_prompt">Tap a card to pull your look.</p>
           </section>
 
           <!-- =========================================== STYLIST RESULT (lookbook) -->
@@ -3092,6 +3093,9 @@
         filter_outer: "Outerwear", filter_shoes: "Shoes", filter_acc: "Accessories",
         closet_more: "Showing 9 of 32 · scroll, filter, edit",
         closet_add_garments: "Add garments",
+        closet_empty_h: "Your closet is empty.",
+        closet_empty_body: "Add a photo of your clothes to get started.",
+        stylist_pick_prompt: "Tap a card to pull your look.",
         // Closet gaps
         gaps_step: "Closet analysis",
         gaps_eyebrow: "4 gaps · ranked by impact",
@@ -3327,6 +3331,9 @@
         filter_outer: "معاطف", filter_shoes: "أحذية", filter_acc: "إكسسوارات",
         closet_more: "عرض 9 من 32 · مرّر، فلتر، حرّر",
         closet_add_garments: "إضافة ملابس",
+        closet_empty_h: "خزانتك فاضية.",
+        closet_empty_body: "أضف صورة لملابسك وابدأ.",
+        stylist_pick_prompt: "اضغط على بطاقة لنجهّز إطلالتك.",
         // Closet gaps
         gaps_step: "تحليل الخزانة",
         gaps_eyebrow: "٤ فجوات · مرتّبة بحسب الأثر",
@@ -3730,11 +3737,12 @@
         closetState.loaded = true;
 
         if (closetState.garments.length === 0) {
+          const d = i18n[state.lang] || i18n.en;
           renderClosetEmpty(grid, more, {
-            headline: "Closet's still empty.",
-            body: "Onboarding saved your account but no garments came through. Try adding a photo.",
-            ctaLabel: "Add photos",
-            ctaHref: "/onboarding.html"
+            headline: d.closet_empty_h || "Your closet is empty.",
+            body: d.closet_empty_body || "Add a photo of your clothes to get started.",
+            ctaLabel: d.closet_add_garments || "Add garments",
+            ctaHref: "/onboarding.html?add=true"
           });
         } else {
           renderClosetGrid(grid, more, closetState.garments);
@@ -3760,6 +3768,8 @@
 
     function renderClosetGrid(grid, more, garments) {
       setStat("stat-items", garments.length);
+      const filters = document.querySelector('section[data-screen="closet"] .closet-filters');
+      if (filters) filters.hidden = false;
       const visible = filterGarments(garments);
       grid.innerHTML = visible.map((g, i) => {
         const accent = TILE_ACCENTS[i % TILE_ACCENTS.length];
@@ -3782,12 +3792,13 @@
 
     function renderClosetEmpty(grid, more, { headline, body, ctaLabel, ctaHref, ctaOnClick }) {
       setStat("stat-items", 0);
+      const filters = document.querySelector('section[data-screen="closet"] .closet-filters');
+      if (filters) filters.hidden = true;
       grid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 32px 18px;">
-          <p class="h-eyebrow" style="margin-bottom:6px;">Closet</p>
+        <div style="grid-column: 1 / -1; text-align: center; padding: 48px 24px 32px;">
           <h3 class="h2" style="margin:0 0 8px;">${headline}</h3>
-          <p class="lead" style="margin:0 0 16px; font-size:13px;">${body}</p>
-          <button class="btn btn-primary" id="closet-empty-cta" ${ctaHref ? `data-href="${ctaHref}"` : ""}>${ctaLabel}</button>
+          <p style="font-size:13px; color:var(--ink-mid); margin:0 0 20px; line-height:1.5;">${body}</p>
+          <button class="btn btn-primary" id="closet-empty-cta">${ctaLabel}</button>
         </div>`;
       if (more) more.textContent = "";
       const btn = grid.querySelector("#closet-empty-cta");
@@ -4141,7 +4152,19 @@
           setScreen("closet");
           const grid = document.querySelector('section[data-screen="closet"] .closet-grid');
           const more = document.querySelector('section[data-screen="closet"] [data-i18n="closet_more"]');
-          if (grid) renderClosetGrid(grid, more, closetState.garments);
+          if (grid) {
+            if (closetState.garments.length === 0) {
+              const d = i18n[state.lang] || i18n.en;
+              renderClosetEmpty(grid, more, {
+                headline: d.closet_empty_h || "Your closet is empty.",
+                body: d.closet_empty_body || "Add a photo of your clothes to get started.",
+                ctaLabel: d.closet_add_garments || "Add garments",
+                ctaHref: "/onboarding.html?add=true"
+              });
+            } else {
+              renderClosetGrid(grid, more, closetState.garments);
+            }
+          }
         } catch (err) {
           if (deleteErr) deleteErr.style.display = "";
           console.error("delete-garment error:", err);

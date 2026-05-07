@@ -815,7 +815,8 @@
       position: relative;
     }
     .item-hero svg { width: 55%; height: 70%; opacity: 0.9; }
-    .item-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-card); }
+    /* z-index: 1 ensures the photo always renders above the fallback SVG in the grid stacking context */
+    .item-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; border-radius: var(--radius-card); z-index: 1; }
     .item-hero .source-badge {
       position: absolute;
       top: 14px; right: 14px;
@@ -3657,15 +3658,26 @@
     const closetState = { loaded: false, loading: false, garments: [] };
 
     // Map garment categories → SVG symbol IDs already defined in this file.
+    // Claude Vision emits: shirt, tshirt, polo, sweater, jacket, blazer, coat,
+    //   pants, jeans, chinos, shorts, shoes, sneakers, boots, accessory, other.
     // Falls back to g-shirt for anything unrecognised.
     const CATEGORY_TO_SYMBOL = {
       shirt: "g-overshirt",
-      tshirt: "g-polo", tee: "g-polo", polo: "g-polo",
-      trouser: "g-trouser", trousers: "g-trouser", chinos: "g-chinos", pants: "g-trouser",
+      tshirt: "g-tee", tee: "g-tee",    // crew-neck; g-polo has a collar — wrong for tshirt
+      polo: "g-polo",
+      sweater: "g-tee",                  // no sweater symbol; g-tee is closest structured knit
+      trouser: "g-trouser", trousers: "g-trouser", pants: "g-trouser",
+      jeans: "g-jeans",                  // dedicated jeans symbol
+      chinos: "g-chinos",
       shorts: "g-trouser",
-      blazer: "g-suit", suit: "g-suit", jacket: "g-suit",
-      overshirt: "g-overshirt",
-      shoe: "g-derby", shoes: "g-derby", loafer: "g-derby", derby: "g-derby", oxford: "g-oxford", sneaker: "g-derby",
+      blazer: "g-blazer",                // dedicated blazer symbol; was g-suit (wrong silhouette)
+      jacket: "g-blazer",               // jacket maps to blazer silhouette
+      coat: "g-blazer-long",            // long coat symbol
+      suit: "g-suit", overshirt: "g-overshirt",
+      shoe: "g-shoe", shoes: "g-shoe",  // g-shoe is the generic/casual shoe
+      sneaker: "g-shoe", sneakers: "g-shoe",
+      boots: "g-oxford", boot: "g-oxford",
+      loafer: "g-derby", derby: "g-derby", oxford: "g-oxford",
       bag: "g-briefcase", briefcase: "g-briefcase", tote: "g-briefcase",
       watch: "g-watch", accessory: "g-watch",
       tie: "g-shirt-tie",
@@ -4086,16 +4098,17 @@
       // Hero: show cropped photo when available, SVG symbol fallback otherwise.
       const heroImg = root.querySelector(".item-hero img");
       const heroSvg = root.querySelector(".item-hero svg");
-      if (heroImg && heroSvg) {
+      if (heroImg) {
         if (g.thumb_url) {
           heroImg.src = g.thumb_url;
-          heroImg.hidden = false;
-          heroSvg.hidden = true;
+          heroImg.style.display = "block";
         } else {
-          heroImg.src = "";
-          heroImg.hidden = true;
-          heroSvg.hidden = false;
+          heroImg.style.display = "none";
+          heroImg.removeAttribute("src");
         }
+      }
+      if (heroSvg) {
+        heroSvg.style.display = g.thumb_url ? "none" : "block";
       }
       const useEl = root.querySelector(".item-hero use");
       if (useEl) useEl.setAttribute("href", "#" + symbolFor(g.category));

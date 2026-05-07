@@ -3133,6 +3133,7 @@
         stylist_eyebrow: "AI Stylist",
         stylist_h: "For the meeting, for iftar, for Tuesday.",
         stylist_lead: "Pick an occasion. We'll blend your closet with three feed picks.",
+        stylist_loading: "Pulling a look together…",
         occ_work_t: "Boardroom", occ_work_h: "Client-facing. Full polish required.",
         occ_eid_t: "Workday", occ_eid_h: "Smart casual. Office but not stiff.",
         occ_brunch_t: "Weekend brunch", occ_brunch_h: "Mar Mikhael or the coast. Relaxed.",
@@ -3365,6 +3366,7 @@
         stylist_eyebrow: "المصمم الذكي",
         stylist_h: "للاجتماع، للإفطار، ليوم الثلاثاء.",
         stylist_lead: "اختر مناسبة. ندمج خزانتك مع ثلاث قطع من الفيد.",
+        stylist_loading: "نجهّز لك إطلالة…",
         occ_work_t: "اجتماع العميل", occ_work_h: "رسمي كامل. لا مجال للتهاون.",
         occ_eid_t: "يوم المكتب", occ_eid_h: "سمارت كاجوال. أناقة بدون تصلّب.",
         occ_brunch_t: "برنش الويكند", occ_brunch_h: "مار مخايل أو الكورنيش. استرخاء.",
@@ -3940,7 +3942,8 @@
       if (step) step.textContent = `Styling for ${occasion}…`;
       if (note) note.innerHTML = `<strong>Loading your outfit…</strong>`;
       lookbook.setAttribute("aria-busy", "true");
-      lookbook.innerHTML = `<div style="text-align:center; padding:32px 18px;"><p class="lead">Drawing from your closet…</p></div>`;
+      const _stylistLoadingText = (i18n[state.lang] || i18n.en).stylist_loading || "Pulling a look together…";
+      lookbook.innerHTML = `<div style="text-align:center; padding:48px 18px;"><p style="font-size:14px; color:var(--ink-mid); margin:0;">${_stylistLoadingText}</p></div>`;
 
       // Closet metadata needed for per-garment pill labels + symbols. Kick off in parallel.
       const closetReady = loadCloset();

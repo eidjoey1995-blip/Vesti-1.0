@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#fafaf7" />
   <title>Vesti — Build your closet</title>
   <style>
     :root {
@@ -29,7 +32,7 @@
     .wrap {
       max-width: 640px;
       margin: 0 auto;
-      padding: 24px 20px 120px;
+      padding: calc(24px + env(safe-area-inset-top)) 20px 120px;
     }
     h1 {
       font-family: "SF Pro Display", -apple-system, serif;
@@ -181,7 +184,7 @@
     .step.active { display: block; }
     .toast {
       position: fixed;
-      top: 16px;
+      top: calc(16px + env(safe-area-inset-top));
       left: 50%;
       transform: translateX(-50%);
       background: var(--ink);

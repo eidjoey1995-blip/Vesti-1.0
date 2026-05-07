@@ -90,10 +90,17 @@ export default async function handler(req, res) {
         const bbox = g.raw_response?.bbox || g.bbox;
         if (!bbox || typeof bbox.x !== "number") continue;
         try {
-          const left   = Math.max(0, Math.round(bbox.x * imgW));
-          const top    = Math.max(0, Math.round(bbox.y * imgH));
-          const width  = Math.min(imgW - left, Math.max(1, Math.round(bbox.w * imgW)));
-          const height = Math.min(imgH - top,  Math.max(1, Math.round(bbox.h * imgH)));
+          const rawLeft   = Math.round(bbox.x * imgW);
+          const rawTop    = Math.round(bbox.y * imgH);
+          const rawWidth  = Math.round(bbox.w * imgW);
+          const rawHeight = Math.round(bbox.h * imgH);
+          // Inset each side by 4% of the bbox dimension to shed loose background pixels.
+          const insetX = Math.floor(rawWidth  * 0.04);
+          const insetY = Math.floor(rawHeight * 0.04);
+          const left   = Math.max(0, rawLeft + insetX);
+          const top    = Math.max(0, rawTop  + insetY);
+          const width  = Math.max(1, Math.min(imgW - left, rawWidth  - 2 * insetX));
+          const height = Math.max(1, Math.min(imgH - top,  rawHeight - 2 * insetY));
           const crop = await sharp(imgBuf)
             .extract({ left, top, width, height })
             .resize(400, 400, { fit: "cover", position: "centre" })

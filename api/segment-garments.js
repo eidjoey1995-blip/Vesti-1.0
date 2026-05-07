@@ -15,7 +15,7 @@ For every garment you see, return:
 - pattern: one of "solid", "striped", "check", "plaid", "printed", "other"
 - formality_score: integer 1-5 where 1=loungewear/athletic, 3=casual everyday, 5=formal/suit territory
 - description: one sentence describing the item
-- bbox: tight bounding box around just this garment, as normalized floats 0.0–1.0 in {"x": left, "y": top, "w": width, "h": height} where x+w<=1 and y+h<=1. Crop tight — exclude background/other garments. Origin (0,0) is the top-left of the photo.
+- bbox: TIGHT bounding box hugging only this garment — no surrounding fabric, no background pixels, no overlap with neighboring items. Err on the side of cropping slightly inside the garment edge rather than including any exterior pixels. Normalized floats 0.0–1.0: {"x": left, "y": top, "w": width, "h": height} where x+w<=1 and y+h<=1. Origin (0,0) is top-left.
 
 Return JSON only, no other text. Format:
 {
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: "Identify every garment in this flatlay. Return JSON only, including a tight bbox per garment.",
+              text: "Identify every garment in this flatlay. Return JSON only. For each garment include a TIGHT bbox hugging only that garment — no background, no neighboring items. Err inside rather than outside.",
             },
           ],
         },

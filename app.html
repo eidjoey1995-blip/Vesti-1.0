@@ -815,6 +815,7 @@
       position: relative;
     }
     .item-hero svg { width: 55%; height: 70%; opacity: 0.9; }
+    .item-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-card); }
     .item-hero .source-badge {
       position: absolute;
       top: 14px; right: 14px;
@@ -2323,6 +2324,7 @@
             </div>
 
             <div class="item-hero">
+              <img id="item-hero-photo" hidden alt="">
               <svg viewBox="0 0 50 60"><use href="#g-shirt" data-use-f="#g-shirt" data-use-m="#g-overshirt"/></svg>
               <!-- BETA: source badge says "From your photo" — auto-segmented, no merchant attribution. -->
               <div class="source-badge" data-i18n="source_receipt">From your photo</div>
@@ -4067,7 +4069,20 @@
       state.currentGarment = g;
       const root = document.querySelector('section[data-screen="item-detail"]');
       if (!root) return;
-      // Hero SVG → swap to the right symbol
+      // Hero: show cropped photo when available, SVG symbol fallback otherwise.
+      const heroImg = root.querySelector(".item-hero img");
+      const heroSvg = root.querySelector(".item-hero svg");
+      if (heroImg && heroSvg) {
+        if (g.thumb_url) {
+          heroImg.src = g.thumb_url;
+          heroImg.hidden = false;
+          heroSvg.hidden = true;
+        } else {
+          heroImg.src = "";
+          heroImg.hidden = true;
+          heroSvg.hidden = false;
+        }
+      }
       const useEl = root.querySelector(".item-hero use");
       if (useEl) useEl.setAttribute("href", "#" + symbolFor(g.category));
       // Headline + category

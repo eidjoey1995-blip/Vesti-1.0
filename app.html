@@ -2569,6 +2569,13 @@
               </div>
             </div>
 
+            <!-- BETA: stats populated dynamically from /api/get-stats. -->
+            <div class="closet-stats" style="padding:12px 24px 4px">
+              <div class="stat"><div class="stat-num" id="pstat-garments">—</div><div class="stat-label" data-i18n="pstat_garments">Garments</div></div>
+              <div class="stat"><div class="stat-num" id="pstat-outfits">—</div><div class="stat-label" data-i18n="pstat_outfits">Outfits</div></div>
+              <div class="stat"><div class="stat-num" id="pstat-days">—</div><div class="stat-label" data-i18n="pstat_days">Days active</div></div>
+            </div>
+
             <div class="section-label" data-i18n="section_three_ways">Four ways in. Zero friction.</div>
 
             <div class="onboarding-path" data-goto="receipt-setup">
@@ -3159,6 +3166,7 @@
         prod_5_n: "Woven tote, cream.",
         prod_6_n: "Linen set, olive.",
         // Profile
+        pstat_garments: "Garments", pstat_outfits: "Outfits", pstat_days: "Days active",
         profile_eyebrow: "Closet-first",
         profile_h: "How your closet builds.",
         profile_name: "Leila",
@@ -3386,6 +3394,7 @@
         prod_4_n: "عباءة مفتوحة، كريمية.",
         prod_5_n: "حقيبة منسوجة، كريمية.",
         prod_6_n: "طقم كتّان، زيتوني.",
+        pstat_garments: "القطع", pstat_outfits: "التنسيقات", pstat_days: "أيام النشاط",
         profile_eyebrow: "الخزانة أولاً",
         profile_h: "كيف تُبنى خزانتك.",
         profile_name: "ليلى",
@@ -3625,6 +3634,8 @@
       if (id === "closet") loadCloset();
       // BETA: lazy-load gap analysis when entering the closet-gaps screen.
       if (id === "closet-gaps") loadGaps();
+      // BETA: lazy-load profile stats when entering the profile screen.
+      if (id === "profile") loadProfileStats();
     }
 
     // -------- BETA closet wiring --------
@@ -3866,6 +3877,33 @@
           + `</div>`
           + `</div>`;
       }).join("");
+    }
+
+    // -------- Profile stats wiring --------
+    const STATS_ENDPOINT = "/api/get-stats";
+    const statsState = { loaded: false, loading: false };
+
+    async function loadProfileStats(force = false) {
+      if (statsState.loaded && !force) return;
+      if (statsState.loading) return;
+      statsState.loading = true;
+      try {
+        const r = await fetch(STATS_ENDPOINT, { headers: getAuthHeaders() });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
+        const g = document.getElementById("pstat-garments");
+        const o = document.getElementById("pstat-outfits");
+        const d = document.getElementById("pstat-days");
+        if (g) g.textContent = String(j.garments_count ?? "—");
+        if (o) o.textContent = String(j.outfits_count ?? "—");
+        if (d) d.textContent = String(j.days_active ?? "—");
+        statsState.loaded = true;
+      } catch (err) {
+        console.warn("get-stats error:", err);
+        // Leave "—" placeholders on error.
+      } finally {
+        statsState.loading = false;
+      }
     }
 
     // -------- BETA stylist wiring --------

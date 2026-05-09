@@ -815,8 +815,7 @@
       position: relative;
     }
     .item-hero svg { width: 55%; height: 70%; opacity: 0.9; }
-    /* z-index: 1 ensures the photo always renders above the fallback SVG in the grid stacking context */
-    .item-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; border-radius: var(--radius-card); z-index: 1; }
+    .item-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-card); }
     .item-hero .source-badge {
       position: absolute;
       top: 14px; right: 14px;
@@ -2325,8 +2324,7 @@
             </div>
 
             <div class="item-hero">
-              <img id="item-hero-photo" hidden alt="">
-              <svg viewBox="0 0 50 60"><use href="#g-shirt" data-use-f="#g-shirt" data-use-m="#g-overshirt"/></svg>
+              <!-- hero visual (img or svg) injected by populateItemDetail -->
               <!-- BETA: source badge says "From your photo" — auto-segmented, no merchant attribution. -->
               <div class="source-badge" data-i18n="source_receipt">From your photo</div>
             </div>
@@ -3663,21 +3661,26 @@
     // Falls back to g-shirt for anything unrecognised.
     const CATEGORY_TO_SYMBOL = {
       shirt: "g-overshirt",
-      tshirt: "g-tee", tee: "g-tee",    // crew-neck; g-polo has a collar — wrong for tshirt
+      tshirt: "g-tee", "t-shirt": "g-tee", tee: "g-tee",  // crew-neck; g-polo has a collar — wrong for tshirt
       polo: "g-polo",
-      sweater: "g-tee",                  // no sweater symbol; g-tee is closest structured knit
+      sweater: "g-tee", cardigan: "g-tee", jumper: "g-tee", knitwear: "g-tee",
+      blouse: "g-silk", top: "g-silk",   // blouse/top → silk silhouette
       trouser: "g-trouser", trousers: "g-trouser", pants: "g-trouser",
       jeans: "g-jeans",                  // dedicated jeans symbol
       chinos: "g-chinos",
       shorts: "g-trouser",
+      skirt: "g-skirt",                  // dedicated skirt symbol
+      dress: "g-dress",                  // dedicated dress symbol
       blazer: "g-blazer",                // dedicated blazer symbol; was g-suit (wrong silhouette)
       jacket: "g-blazer",               // jacket maps to blazer silhouette
       coat: "g-blazer-long",            // long coat symbol
       suit: "g-suit", overshirt: "g-overshirt",
       shoe: "g-shoe", shoes: "g-shoe",  // g-shoe is the generic/casual shoe
       sneaker: "g-shoe", sneakers: "g-shoe",
+      sandal: "g-shoe", sandals: "g-shoe",
       boots: "g-oxford", boot: "g-oxford",
       loafer: "g-derby", derby: "g-derby", oxford: "g-oxford",
+      heel: "g-heels", heels: "g-heels",
       bag: "g-briefcase", briefcase: "g-briefcase", tote: "g-briefcase",
       watch: "g-watch", accessory: "g-watch",
       tie: "g-shirt-tie",
@@ -3709,7 +3712,26 @@
 
     function symbolFor(category) {
       const k = (category || "").toLowerCase().trim();
-      return CATEGORY_TO_SYMBOL[k] || "g-shirt";
+      if (CATEGORY_TO_SYMBOL[k]) return CATEGORY_TO_SYMBOL[k];
+      // Partial match for compound/multi-word categories (e.g. "crew neck t-shirt")
+      if (k.includes("tshirt") || k.includes("t-shirt") || k.includes("crew")) return "g-tee";
+      if (k.includes("polo")) return "g-polo";
+      if (k.includes("overshirt")) return "g-overshirt";
+      if (k.includes("shirt")) return "g-shirt";
+      if (k.includes("blazer") || k.includes("jacket")) return "g-blazer";
+      if (k.includes("coat")) return "g-blazer-long";
+      if (k.includes("suit")) return "g-suit";
+      if (k.includes("trouser") || k.includes("pant") || k.includes("chino") || k.includes("jean") || k.includes("denim") || k.includes("short")) return "g-trouser";
+      if (k.includes("skirt")) return "g-skirt";
+      if (k.includes("dress")) return "g-dress";
+      if (k.includes("heel")) return "g-heels";
+      if (k.includes("boot")) return "g-oxford";
+      if (k.includes("loafer") || k.includes("derby") || k.includes("oxford")) return "g-derby";
+      if (k.includes("shoe") || k.includes("sneaker") || k.includes("sandal") || k.includes("flat") || k.includes("mule")) return "g-shoe";
+      if (k.includes("bag") || k.includes("tote") || k.includes("brief")) return "g-briefcase";
+      if (k.includes("watch") || k.includes("access")) return "g-watch";
+      if (k.includes("tie")) return "g-shirt-tie";
+      return "g-shirt";
     }
 
     function tileLabel(g) {
@@ -4095,23 +4117,28 @@
       state.currentGarment = g;
       const root = document.querySelector('section[data-screen="item-detail"]');
       if (!root) return;
-      // Hero: show cropped photo when available, SVG symbol fallback otherwise.
-      const heroImg = root.querySelector(".item-hero img");
-      const heroSvg = root.querySelector(".item-hero svg");
-      if (heroImg) {
+      // Hero: same pattern as pairs-well tile — inject img or SVG, never both.
+      // Avoids [hidden]{display:none!important} blocking the img, and applyPersona()
+      // interfering with data-use-m/f attrs on a static SVG.
+      const heroDiv = root.querySelector(".item-hero");
+      if (heroDiv) {
+        const badge = heroDiv.querySelector(".source-badge");
+        heroDiv.querySelectorAll("img, svg").forEach(el => el.remove());
+        const sym = symbolFor(g.category);
         if (g.thumb_url) {
-          heroImg.src = g.thumb_url;
-          heroImg.style.display = "block";
+          const img = document.createElement("img");
+          img.src = g.thumb_url;
+          img.alt = "";
+          heroDiv.insertBefore(img, badge || null);
         } else {
-          heroImg.style.display = "none";
-          heroImg.removeAttribute("src");
+          const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          svgEl.setAttribute("viewBox", "0 0 50 60");
+          const useEl = document.createElementNS("http://www.w3.org/2000/svg", "use");
+          useEl.setAttribute("href", "#" + sym);
+          svgEl.appendChild(useEl);
+          heroDiv.insertBefore(svgEl, badge || null);
         }
       }
-      if (heroSvg) {
-        heroSvg.style.display = g.thumb_url ? "none" : "block";
-      }
-      const useEl = root.querySelector(".item-hero use");
-      if (useEl) useEl.setAttribute("href", "#" + symbolFor(g.category));
       // Headline + category
       const cat = root.querySelector('[data-i18n="category_shirt"]');
       if (cat) cat.textContent = (g.subcategory || g.category || "").replace(/^./, c => c.toUpperCase());

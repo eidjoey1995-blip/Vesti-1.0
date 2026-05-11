@@ -152,14 +152,14 @@ Dark trouser (charcoal/grey/navy), soft button-down shirt (white or pale), no ti
 // Build the system prompt for a given city. Beirut overlay is the baseline;
 // Dubai/NY layer on top. Token-efficient: only the relevant city overlay
 // is sent, not all three.
-function buildSystemPrompt(city) {
+function buildSystemPrompt(city, weatherLine) {
   const overlay = CITY_OVERLAYS[city] || CITY_OVERLAYS.Beirut;
   return `You are the AI stylist for Vesti, a men's wardrobe app for Lebanese men (and the Lebanese diaspora). You pick outfits from the user's existing closet for a given occasion, grounded in the Vesti methodology reference below.
 
 CITY CONTEXT (${city || "Beirut — default"}):
 ${overlay}
 
-${CODEX_OCCASIONS}
+${weatherLine ? weatherLine + "\n\n" : ""}${CODEX_OCCASIONS}
 
 PRIORITY RULES:
 1. If the city is Beirut, use the matching entry as written.
@@ -191,6 +191,24 @@ OUTPUT RULES:
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
+
+async function fetchWeather(city) {
+  const apiKey = process.env.OPENWEATHER_API_KEY;
+  if (!apiKey || !city) return null;
+  try {
+    const r = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`
+    );
+    if (!r.ok) return null;
+    const j = await r.json();
+    const temp = j?.main?.temp != null ? Math.round(j.main.temp) : null;
+    const conditions = (j?.weather?.[0]?.description || j?.weather?.[0]?.main || "").toLowerCase();
+    if (temp === null || !conditions) return null;
+    return { temp, conditions, humidity: j?.main?.humidity ?? null };
+  } catch {
+    return null;
+  }
+}
 
 async function resolveUser(req, supabase) {
   const auth = (req.headers.authorization || "").trim();
@@ -256,13 +274,16 @@ export default async function handler(req, res) {
     console.warn("profile read warning:", err?.message || err);
   }
 
-  // Closet read.
-  const { data: garments, error: garmentsErr } = await supabase
-    .from("garments")
-    .select(GARMENT_COLUMNS)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(MAX_GARMENTS);
+  // Closet read + weather fetch in parallel — weather is non-fatal.
+  const [{ data: garments, error: garmentsErr }, weather] = await Promise.all([
+    supabase
+      .from("garments")
+      .select(GARMENT_COLUMNS)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(MAX_GARMENTS),
+    fetchWeather(city)
+  ]);
 
   if (garmentsErr) {
     return res.status(500).json({
@@ -298,13 +319,17 @@ export default async function handler(req, res) {
     JSON.stringify(compactGarments)
   ].join("\n");
 
+  const weatherLine = weather
+    ? `Current weather in ${city}: ${weather.temp}°C, ${weather.conditions}. Favor fabrics and layers appropriate for this — lightweight cotton/linen above 28°C, layered knits 15-22°C, outerwear below 15°C, avoid suede/light colors if rain.`
+    : null;
+
   // Call Claude with codex-grounded system prompt.
   let parsed;
   try {
     const response = await anthropic.messages.create({
       model: STYLIST_MODEL,
       max_tokens: STYLIST_MAX_TOKENS,
-      system: buildSystemPrompt(city),
+      system: buildSystemPrompt(city, weatherLine),
       messages: [{ role: "user", content: userMessage }]
     });
     const text = response.content?.[0]?.text || "";

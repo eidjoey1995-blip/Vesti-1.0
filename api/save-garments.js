@@ -15,16 +15,54 @@ import sharp from "sharp";
 
 // =========================================================
 // Background removal via Replicate RMBG-1.4.
-// Returns a PNG Buffer on success, null on any failure
-// (missing token, HTTP error, model error, or 8s timeout).
-// Caller must never throw — all errors return null.
+// briaai/rmbg-1.4 is a community model — must use the
+// version-pinned endpoint POST /v1/predictions with an
+// explicit { version } field. The hash is fetched once per
+// cold start and cached so it stays current without a deploy.
 // =========================================================
+
+// Module-level cache — survives across requests on the same warm instance.
+let _rmbgVersionHash = null;
+
+async function fetchRmbgVersion(token) {
+  if (_rmbgVersionHash) return _rmbgVersionHash;
+  const res = await fetch("https://api.replicate.com/v1/models/briaai/rmbg-1.4", {
+    headers: { "Authorization": "Token " + token }
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.warn("rmbg model fetch HTTP", res.status, body);
+    return null;
+  }
+  const data = await res.json();
+  const hash = data?.latest_version?.id ?? null;
+  if (hash) _rmbgVersionHash = hash;
+  return hash;
+}
+
+// Extract the PNG output URL from a prediction object.
+function rmbgOutputUrl(p) {
+  const raw = Array.isArray(p?.output) ? p.output[0] : p?.output;
+  return typeof raw === "string" ? raw : null;
+}
+
 async function removeBackground(imageUrl) {
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) return null;
 
-  const ENDPOINT = "https://api.replicate.com/v1/models/briaai/rmbg-1.4/predictions";
-  console.log("rmbg request", { url: ENDPOINT, hasToken: !!token, imageUrl });
+  // Step A: resolve version hash (cached after first call).
+  let version;
+  try {
+    version = await fetchRmbgVersion(token);
+  } catch (err) {
+    console.warn("rmbg version fetch error:", err.message);
+    return null;
+  }
+  if (!version) return null;
+
+  // Step B: submit prediction.
+  const ENDPOINT = "https://api.replicate.com/v1/predictions";
+  console.log("rmbg request", { url: ENDPOINT, hasToken: !!token, version, imageUrl });
 
   let prediction;
   try {
@@ -35,7 +73,7 @@ async function removeBackground(imageUrl) {
         "Content-Type": "application/json",
         "Prefer": "wait=5"
       },
-      body: JSON.stringify({ input: { image: imageUrl } })
+      body: JSON.stringify({ version, input: { image: imageUrl } })
     });
     if (!res.ok) {
       const body = await res.text();
@@ -48,15 +86,9 @@ async function removeBackground(imageUrl) {
     return null;
   }
 
-  // Helper: extract the PNG URL from a completed prediction object.
-  function outputUrl(p) {
-    const raw = Array.isArray(p?.output) ? p.output[0] : p?.output;
-    return typeof raw === "string" ? raw : null;
-  }
-
-  // Fast path: Prefer: wait=5 may have already resolved it server-side.
+  // Step C: fast path — Prefer: wait=5 may have resolved it already.
   if (prediction?.status === "succeeded") {
-    const url = outputUrl(prediction);
+    const url = rmbgOutputUrl(prediction);
     if (!url) return null;
     const pngRes = await fetch(url);
     if (!pngRes.ok) return null;
@@ -68,9 +100,12 @@ async function removeBackground(imageUrl) {
     return null;
   }
 
-  // Async path: poll urls.get until succeeded or 8s timeout.
+  // Step C: async path — poll urls.get every 500ms, max 16 attempts (8s).
   const pollUrl = prediction?.urls?.get;
-  if (!pollUrl) { console.warn("rmbg: no urls.get in response", JSON.stringify(prediction)); return null; }
+  if (!pollUrl) {
+    console.warn("rmbg: no urls.get in response", JSON.stringify(prediction));
+    return null;
+  }
 
   for (let attempt = 0; attempt < 16; attempt++) {
     await new Promise(r => setTimeout(r, 500));
@@ -85,7 +120,7 @@ async function removeBackground(imageUrl) {
       }
       const poll = await pollRes.json();
       if (poll.status === "succeeded") {
-        const url = outputUrl(poll);
+        const url = rmbgOutputUrl(poll);
         if (!url) return null;
         const pngRes = await fetch(url);
         if (!pngRes.ok) return null;

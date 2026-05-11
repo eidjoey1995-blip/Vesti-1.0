@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import sharp from "sharp";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -59,6 +60,22 @@ export default async function handler(req, res) {
       const imgBuffer = await imgRes.arrayBuffer();
       imageData = Buffer.from(imgBuffer).toString("base64");
       imageMediaType = imgRes.headers.get("content-type") || "image/jpeg";
+    }
+
+    // Normalize: bake EXIF rotation, convert HEIC/PNG/WebP → JPEG so Claude
+    // always receives a format it handles. If HEIC and sharp can't decode it
+    // (libvips built without HEIF), surface a clear 415 rather than a crash.
+    const rawBuf = Buffer.from(imageData, "base64");
+    try {
+      const jpegBuf = await sharp(rawBuf).rotate().jpeg({ quality: 90 }).toBuffer();
+      imageData = jpegBuf.toString("base64");
+      imageMediaType = "image/jpeg";
+    } catch (normErr) {
+      const isHeic = rawBuf.length >= 12 && rawBuf.slice(4, 8).toString("ascii") === "ftyp";
+      if (isHeic) {
+        return res.status(415).json({ error: "HEIC conversion failed — please convert to JPEG and try again." });
+      }
+      // Non-HEIC normalization failure: proceed with original data and let Claude handle it.
     }
 
     const response = await anthropic.messages.create({

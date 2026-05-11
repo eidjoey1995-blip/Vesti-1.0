@@ -76,11 +76,31 @@ export default async function handler(req, res) {
     console.warn("profile upsert warning:", e?.message || e);
   }
 
-  // Crop garment thumbnails from the source flatlay when a base64 image is provided.
-  const thumbUrls = {};
+  // Normalize incoming image: bake EXIF rotation, convert HEIC/PNG/WebP → JPEG.
+  // Must happen before the crop block so coordinates from segment-garments
+  // (which normalizes the same way) align with the pixels we're cutting from.
+  let normalizedImgBuf = null;
   if (photoBase64 && typeof photoBase64 === "string") {
+    const rawBuf = Buffer.from(photoBase64, "base64");
     try {
-      const imgBuf = Buffer.from(photoBase64, "base64");
+      normalizedImgBuf = await sharp(rawBuf).rotate().jpeg({ quality: 90 }).toBuffer();
+    } catch (normErr) {
+      const isHeic = rawBuf.length >= 12 && rawBuf.slice(4, 8).toString("ascii") === "ftyp";
+      if (isHeic) {
+        return res.status(415).json({
+          error: { code: "unsupported_media_type", message: "HEIC conversion failed — please convert to JPEG and try again." }
+        });
+      }
+      console.warn("image normalization failed, using raw buffer:", normErr.message);
+      normalizedImgBuf = rawBuf;
+    }
+  }
+
+  // Crop garment thumbnails from the normalized flatlay.
+  const thumbUrls = {};
+  if (normalizedImgBuf) {
+    try {
+      const imgBuf = normalizedImgBuf;
       const meta = await sharp(imgBuf).metadata();
       const imgW = meta.width || 1;
       const imgH = meta.height || 1;

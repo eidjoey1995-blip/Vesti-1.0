@@ -13,6 +13,64 @@ import sharp from "sharp";
 //   SUPABASE_SERVICE_KEY
 // =========================================================
 
+// =========================================================
+// Background removal via Replicate RMBG-1.4.
+// Returns a PNG Buffer on success, null on any failure
+// (missing token, HTTP error, model error, or 8s timeout).
+// Caller must never throw — all errors return null.
+// =========================================================
+async function removeBackground(imageUrl) {
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) return null;
+
+  let predId;
+  try {
+    const res = await fetch("https://api.replicate.com/v1/models/briaai/rmbg-1.4/predictions", {
+      method: "POST",
+      headers: {
+        "Authorization": "Token " + token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ input: { image: imageUrl } })
+    });
+    if (!res.ok) { console.warn("rmbg submit HTTP", res.status); return null; }
+    const data = await res.json();
+    predId = data?.id;
+    if (!predId) return null;
+  } catch (err) {
+    console.warn("rmbg submit error:", err.message);
+    return null;
+  }
+
+  // Poll: 500ms × 16 = 8s max — leaves ~2s before Vercel's 10s limit.
+  for (let attempt = 0; attempt < 16; attempt++) {
+    await new Promise(r => setTimeout(r, 500));
+    try {
+      const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${predId}`, {
+        headers: { "Authorization": "Token " + token }
+      });
+      if (!pollRes.ok) return null;
+      const poll = await pollRes.json();
+      if (poll.status === "succeeded") {
+        const outputUrl = Array.isArray(poll.output) ? poll.output[0] : poll.output;
+        if (!outputUrl || typeof outputUrl !== "string") return null;
+        const pngRes = await fetch(outputUrl);
+        if (!pngRes.ok) return null;
+        return Buffer.from(await pngRes.arrayBuffer());
+      }
+      if (poll.status === "failed" || poll.status === "canceled") {
+        console.warn("rmbg prediction", poll.status, poll.error || "");
+        return null;
+      }
+    } catch (pollErr) {
+      console.warn("rmbg poll error:", pollErr.message);
+      return null;
+    }
+  }
+  console.warn("rmbg polling timed out after 8s");
+  return null;
+}
+
 async function resolveUser(req, supabase) {
   const auth = (req.headers.authorization || "").trim();
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -121,16 +179,47 @@ export default async function handler(req, res) {
           const top    = Math.max(0, rawTop  + insetY);
           const width  = Math.max(1, Math.min(imgW - left, rawWidth  - 2 * insetX));
           const height = Math.max(1, Math.min(imgH - top,  rawHeight - 2 * insetY));
-          const crop = await sharp(imgBuf)
+          const cropJpeg = await sharp(imgBuf)
             .extract({ left, top, width, height })
             .resize(400, 400, { fit: "cover", position: "centre" })
             .jpeg({ quality: 82 })
             .toBuffer();
 
-          const fileName = `${userId}/${Date.now()}_${i}.jpg`;
+          const ts = Date.now();
+          let finalBuf = cropJpeg;
+          let fileName = `${userId}/${ts}_${i}.jpg`;
+          let contentType = "image/jpeg";
+
+          // Background removal: upload crop to a temp public URL, run RMBG-1.4,
+          // fall back to JPEG on any failure so garment save is never blocked.
+          if (process.env.REPLICATE_API_TOKEN) {
+            const tempName = `${userId}/tmp_${ts}_${i}.jpg`;
+            const { error: tempErr } = await supabase.storage
+              .from("garment-thumbs")
+              .upload(tempName, cropJpeg, { contentType: "image/jpeg", upsert: false });
+
+            if (!tempErr) {
+              const { data: { publicUrl: tempUrl } } = supabase.storage
+                .from("garment-thumbs")
+                .getPublicUrl(tempName);
+
+              const pngBuf = await removeBackground(tempUrl);
+              if (pngBuf) {
+                finalBuf = pngBuf;
+                fileName = `${userId}/${ts}_${i}.png`;
+                contentType = "image/png";
+              } else {
+                console.warn(`rmbg skipped for garment ${i}, falling back to JPEG`);
+              }
+
+              // Clean up temp — fire-and-forget, never blocks the response.
+              supabase.storage.from("garment-thumbs").remove([tempName]).catch(() => {});
+            }
+          }
+
           const { error: upErr } = await supabase.storage
             .from("garment-thumbs")
-            .upload(fileName, crop, { contentType: "image/jpeg", upsert: false });
+            .upload(fileName, finalBuf, { contentType, upsert: false });
 
           if (!upErr) {
             const { data: { publicUrl } } = supabase.storage

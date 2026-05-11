@@ -264,6 +264,19 @@
 
   <div id="toast" class="toast"></div>
 
+  <script>
+  // Run synchronously before the blocking Supabase fetch so the browser never
+  // renders step-identify while the CDN script is in flight (?add=true path).
+  if (new URLSearchParams(location.search).get("add") === "true") {
+    var _si = document.getElementById("step-identify");
+    var _su = document.getElementById("step-upload");
+    if (_si) _si.classList.remove("active");
+    if (_su) _su.classList.add("active");
+    var _ob = document.getElementById("ob-back");
+    if (_ob) _ob.style.display = "block";
+  }
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
   // Session guard + dedup: must run before the onboarding UI becomes interactive.
@@ -348,11 +361,14 @@ function showStep(id) {
 }
 
 // When ?add=true: skip welcome, land on upload, show back button.
+// The early inline script above already switches the step to prevent a welcome-page
+// flash during Supabase CDN load; this block re-confirms after auth resolves and
+// wires the back button click handler.
 const addMode = new URLSearchParams(window.location.search).get("add") === "true";
 if (addMode) {
   showStep("step-upload");
   const backWrap = document.getElementById("ob-back");
-  if (backWrap) backWrap.style.display = "";
+  if (backWrap) backWrap.style.display = "block";
   const backBtn = document.getElementById("ob-back-btn");
   if (backBtn) backBtn.addEventListener("click", () => { window.location.href = "/app.html#closet"; });
 }

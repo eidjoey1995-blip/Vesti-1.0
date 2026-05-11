@@ -14,11 +14,11 @@ import sharp from "sharp";
 // =========================================================
 
 // =========================================================
-// Background removal via Replicate RMBG-1.4.
-// briaai/rmbg-1.4 is a community model — must use the
-// version-pinned endpoint POST /v1/predictions with an
-// explicit { version } field. The hash is fetched once per
-// cold start and cached so it stays current without a deploy.
+// Background removal via Replicate 851-labs/background-remover.
+// Community model — must use the version-pinned endpoint
+// POST /v1/predictions with an explicit { version } field.
+// The hash is fetched once per cold start and cached so it
+// stays current without a deploy.
 // =========================================================
 
 // Module-level cache — survives across requests on the same warm instance.
@@ -26,7 +26,7 @@ let _rmbgVersionHash = null;
 
 async function fetchRmbgVersion(token) {
   if (_rmbgVersionHash) return _rmbgVersionHash;
-  const res = await fetch("https://api.replicate.com/v1/models/briaai/rmbg-1.4", {
+  const res = await fetch("https://api.replicate.com/v1/models/851-labs/background-remover", {
     headers: { "Authorization": "Token " + token }
   });
   if (!res.ok) {
@@ -258,7 +258,7 @@ export default async function handler(req, res) {
           let fileName = `${userId}/${ts}_${i}.jpg`;
           let contentType = "image/jpeg";
 
-          // Background removal: upload crop to a temp public URL, run RMBG-1.4,
+          // Background removal: upload crop to a temp public URL, run 851-labs/background-remover,
           // fall back to JPEG on any failure so garment save is never blocked.
           if (process.env.REPLICATE_API_TOKEN) {
             const tempName = `${userId}/tmp_${ts}_${i}.jpg`;

@@ -3985,7 +3985,6 @@
       stylistState.error = null;
 
       if (step) step.textContent = `Styling for ${occasion}…`;
-      if (note) note.innerHTML = `<strong>Loading your outfit…</strong>`;
       lookbook.setAttribute("aria-busy", "true");
       const _stylistLoadingText = (i18n[state.lang] || i18n.en).stylist_loading || "Pulling a look together…";
       lookbook.innerHTML = `<div style="text-align:center; padding:48px 18px;"><p style="font-size:14px; color:var(--ink-mid); margin:0;">${_stylistLoadingText}</p></div>`;

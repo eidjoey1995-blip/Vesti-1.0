@@ -2645,6 +2645,9 @@
               </div>
               <span class="chev">›</span>
             </div>
+            <div style="padding:8px 24px 0;">
+              <button id="btn-sign-out" class="btn btn-ghost btn-block" data-i18n="sign_out" style="color:var(--ink-mid);">Sign out</button>
+            </div>
             <div style="height:24px"></div>
           </section>
 
@@ -3201,6 +3204,7 @@
         set_currency: "Currency",
         set_privacy: "Privacy",
         set_privacy_v: "Receipts stripped of PII before storage",
+        sign_out: "Sign out",
         // Receipt setup
         receipt_step: "Step 1 · set-up",
         receipt_eyebrow: "The key differentiator",
@@ -3431,6 +3435,7 @@
         set_currency: "العملة",
         set_privacy: "الخصوصية",
         set_privacy_v: "تُزال البيانات الشخصية من الإيصالات قبل التخزين",
+        sign_out: "تسجيل الخروج",
         receipt_step: "الخطوة ١ · الإعداد",
         receipt_eyebrow: "العامل المميّز",
         receipt_h: "صندوق فيستي الخاص بك.",
@@ -4468,8 +4473,17 @@
           return;
         }
 
-        const sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+        const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: window.localStorage,
+            storageKey: "vesti-auth"
+          }
+        });
         const { data: { session } } = await sb.auth.getSession();
+        console.log("session check", { hasSession: !!session, expiresAt: session?.expires_at, currentUserId: session?.user?.id });
 
         if (!session) {
           window.location.replace("/");
@@ -4482,6 +4496,13 @@
         sb.auth.onAuthStateChange((event, sess) => {
           if (event === "SIGNED_OUT") { window.location.replace("/"); }
           else if (sess) { window._vesti_session = sess; patchProfileFromSession(sess); }
+        });
+
+        document.getElementById("btn-sign-out").addEventListener("click", async () => {
+          if (window._vesti_supabase) {
+            await window._vesti_supabase.auth.signOut().catch(() => {});
+          }
+          window.location.replace("/");
         });
 
       } catch (err) {

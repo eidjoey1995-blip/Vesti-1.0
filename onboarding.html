@@ -292,8 +292,17 @@
         return;
       }
 
-      const sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+      const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage,
+          storageKey: "vesti-auth"
+        }
+      });
       const { data: { session } } = await sb.auth.getSession();
+      console.log("session check", { hasSession: !!session, expiresAt: session?.expires_at, currentUserId: session?.user?.id });
 
       if (!session) {
         window.location.replace("/");

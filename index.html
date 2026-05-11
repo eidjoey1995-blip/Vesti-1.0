@@ -228,7 +228,7 @@
         });
         const j = await r.json();
         const hasGarments = Array.isArray(j.garments) && j.garments.length > 0;
-        window.location.replace(hasGarments ? "/app.html" : "/onboarding.html");
+        window.location.replace(hasGarments ? "/app.html#closet" : "/onboarding.html");
       } catch (_) {
         window.location.replace("/onboarding.html");
       }
@@ -241,7 +241,19 @@
         return;
       }
 
-      _sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+      _sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage,
+          storageKey: "vesti-auth"
+        }
+      });
+
+      // Log session state so we can diagnose persist/read issues.
+      const { data: { session: _initSession } } = await _sb.auth.getSession();
+      console.log("session check", { hasSession: !!_initSession, expiresAt: _initSession?.expires_at, currentUserId: _initSession?.user?.id });
 
       // INITIAL_SESSION fires once after the client initialises.
       // If the URL contains a magic-link ?code=…, the SDK exchanges it

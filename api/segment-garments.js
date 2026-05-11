@@ -15,8 +15,16 @@ For every garment you see, return:
 - color: primary color in plain English (e.g. "navy", "white", "olive green")
 - pattern: one of "solid", "striped", "check", "plaid", "printed", "other"
 - formality_score: integer 1-5 where 1=loungewear/athletic, 3=casual everyday, 5=formal/suit territory
-- description: one sentence describing the item
+- description: one sentence describing the garment itself — color, type, and visible material or pattern only
 - bbox: TIGHT bounding box hugging only this garment — no surrounding fabric, no background pixels, no overlap with neighboring items. Err on the side of cropping slightly inside the garment edge rather than including any exterior pixels. Normalized floats 0.0–1.0: {"x": left, "y": top, "w": width, "h": height} where x+w<=1 and y+h<=1. Origin (0,0) is top-left.
+
+NAMING RULES (apply to subcategory and description):
+- Use 2-5 words: color + garment type. Good: "dark grey trousers", "navy blazer", "white linen shirt", "tan leather loafers", "olive cargo pants".
+- NEVER mention the photography context: no hangers, hooks, racks, floors, tables, chairs, walls, beds, mannequins, models, backgrounds, or lighting.
+- NEVER use verbs about presentation: no hanging, laid, folded, draped, placed, displayed, photographed.
+- NEVER use the words "garment", "item", "piece", or "clothing" — name the specific type (trousers, shirt, blazer, etc.).
+- Color: one simple word (grey, navy, beige, cream). Avoid multi-word color phrases like "dark slate blue-grey".
+- Pattern or material is welcome if clearly visible: "striped white shirt", "linen trousers", "cable-knit jumper". Default to color + type when not obvious.
 
 Return JSON only, no other text. Format:
 {

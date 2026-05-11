@@ -23,38 +23,71 @@ async function removeBackground(imageUrl) {
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) return null;
 
-  let predId;
+  const ENDPOINT = "https://api.replicate.com/v1/models/briaai/rmbg-1.4/predictions";
+  console.log("rmbg request", { url: ENDPOINT, hasToken: !!token, imageUrl });
+
+  let prediction;
   try {
-    const res = await fetch("https://api.replicate.com/v1/models/briaai/rmbg-1.4/predictions", {
+    const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: {
         "Authorization": "Token " + token,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Prefer": "wait=5"
       },
       body: JSON.stringify({ input: { image: imageUrl } })
     });
-    if (!res.ok) { console.warn("rmbg submit HTTP", res.status); return null; }
-    const data = await res.json();
-    predId = data?.id;
-    if (!predId) return null;
+    if (!res.ok) {
+      const body = await res.text();
+      console.warn("rmbg submit HTTP", res.status, body);
+      return null;
+    }
+    prediction = await res.json();
   } catch (err) {
     console.warn("rmbg submit error:", err.message);
     return null;
   }
 
-  // Poll: 500ms × 16 = 8s max — leaves ~2s before Vercel's 10s limit.
+  // Helper: extract the PNG URL from a completed prediction object.
+  function outputUrl(p) {
+    const raw = Array.isArray(p?.output) ? p.output[0] : p?.output;
+    return typeof raw === "string" ? raw : null;
+  }
+
+  // Fast path: Prefer: wait=5 may have already resolved it server-side.
+  if (prediction?.status === "succeeded") {
+    const url = outputUrl(prediction);
+    if (!url) return null;
+    const pngRes = await fetch(url);
+    if (!pngRes.ok) return null;
+    return Buffer.from(await pngRes.arrayBuffer());
+  }
+
+  if (prediction?.status === "failed" || prediction?.status === "canceled") {
+    console.warn("rmbg prediction", prediction.status, prediction.error || "");
+    return null;
+  }
+
+  // Async path: poll urls.get until succeeded or 8s timeout.
+  const pollUrl = prediction?.urls?.get;
+  if (!pollUrl) { console.warn("rmbg: no urls.get in response", JSON.stringify(prediction)); return null; }
+
   for (let attempt = 0; attempt < 16; attempt++) {
     await new Promise(r => setTimeout(r, 500));
     try {
-      const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${predId}`, {
+      const pollRes = await fetch(pollUrl, {
         headers: { "Authorization": "Token " + token }
       });
-      if (!pollRes.ok) return null;
+      if (!pollRes.ok) {
+        const body = await pollRes.text();
+        console.warn("rmbg poll HTTP", pollRes.status, body);
+        return null;
+      }
       const poll = await pollRes.json();
       if (poll.status === "succeeded") {
-        const outputUrl = Array.isArray(poll.output) ? poll.output[0] : poll.output;
-        if (!outputUrl || typeof outputUrl !== "string") return null;
-        const pngRes = await fetch(outputUrl);
+        const url = outputUrl(poll);
+        if (!url) return null;
+        const pngRes = await fetch(url);
         if (!pngRes.ok) return null;
         return Buffer.from(await pngRes.arrayBuffer());
       }

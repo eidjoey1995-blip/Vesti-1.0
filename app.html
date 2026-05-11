@@ -3137,6 +3137,7 @@
         stylist_h: "For the meeting, for iftar, for Tuesday.",
         stylist_lead: "Pick an occasion. We'll blend your closet with three feed picks.",
         stylist_loading: "Pulling a look together…",
+        stylist_no_result: "No look found for this occasion — try a different one.",
         occ_work_t: "Boardroom", occ_work_h: "Client-facing. Full polish required.",
         occ_eid_t: "Workday", occ_eid_h: "Smart casual. Office but not stiff.",
         occ_brunch_t: "Weekend brunch", occ_brunch_h: "Mar Mikhael or the coast. Relaxed.",
@@ -3373,6 +3374,7 @@
         stylist_h: "للاجتماع، للإفطار، ليوم الثلاثاء.",
         stylist_lead: "اختر مناسبة. ندمج خزانتك مع ثلاث قطع من الفيد.",
         stylist_loading: "نجهّز لك إطلالة…",
+        stylist_no_result: "ما لقينا إطلالة لهالمناسبة — جرّبي مناسبة ثانية.",
         occ_work_t: "اجتماع العميل", occ_work_h: "رسمي كامل. لا مجال للتهاون.",
         occ_eid_t: "يوم المكتب", occ_eid_h: "سمارت كاجوال. أناقة بدون تصلّب.",
         occ_brunch_t: "برنش الويكند", occ_brunch_h: "مار مخايل أو الكورنيش. استرخاء.",
@@ -4024,11 +4026,8 @@
       if (note) note.textContent = "Drawn from your closet";
 
       if (items.length === 0) {
-        lookbook.innerHTML = `
-          <div style="text-align:center; padding:32px 18px;">
-            <p class="h-eyebrow" style="margin-bottom:6px;">No outfit returned</p>
-            <p class="lead">${(reasoning || "The stylist couldn't compose an outfit from your closet for this occasion. Try another occasion or add more pieces.").replace(/</g, "&lt;")}</p>
-          </div>`;
+        const d = i18n[state.lang] || i18n.en;
+        lookbook.innerHTML = `<div style="text-align:center; padding:40px 18px;"><p style="font-size:14px; color:var(--ink-mid); margin:0;">${(d.stylist_no_result || "No look found for this occasion — try a different one.").replace(/</g, "&lt;")}</p></div>`;
         return;
       }
 

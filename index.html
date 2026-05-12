@@ -7,13 +7,25 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="theme-color" content="#fafaf7" />
   <title>Vesti — Your wardrobe, intelligent.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg: #fafaf7;
-      --ink: #14110f;
+      --ink: #2d2416;
       --muted: #6f6a64;
-      --line: #e5e1da;
-      --accent-soft: #efeae0;
+      --line: #e7e5e4;
+      --accent-soft: #f5f5f4;
+      --accent-warm: #a78b6a;
+      --text-display: 42px;
+      --text-section: 28px;
+      --text-body: 15px;
+      --text-caption: 13px;
+      --text-eyebrow: 11px;
+      --radius: 12px;
+      --radius-pill: 999px;
+      --transition: .15s cubic-bezier(.4, 0, .2, 1);
     }
     * { box-sizing: border-box; }
     html, body {
@@ -29,31 +41,46 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      max-width: 640px;
+      max-width: 560px;
       margin: 0 auto;
-      padding: calc(28px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+      padding: calc(24px + env(safe-area-inset-top)) 24px calc(48px + env(safe-area-inset-bottom));
     }
+
+    /* ── Header ── */
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 56px;
+      margin-bottom: 72px;
     }
     .wordmark {
-      font-family: "SF Pro Display", -apple-system, serif;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .v-mark {
+      width: 30px;
+      height: 30px;
+      color: var(--ink);
+      flex-shrink: 0;
+    }
+    .wordmark-text {
+      font-family: "SF Pro Display", -apple-system, sans-serif;
       font-weight: 600;
-      font-size: 20px;
+      font-size: 18px;
       letter-spacing: -0.01em;
     }
-    .beta {
-      font-size: 11px;
+    .beta-pill {
+      font-size: var(--text-eyebrow);
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--muted);
       padding: 4px 10px;
       border: 1px solid var(--line);
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
     }
+
+    /* ── Hero ── */
     main {
       flex: 1;
       display: flex;
@@ -61,157 +88,291 @@
       justify-content: center;
     }
     h1 {
-      font-family: "SF Pro Display", -apple-system, serif;
+      font-family: "Crimson Pro", Georgia, "Times New Roman", serif;
       font-weight: 600;
-      font-size: 40px;
-      line-height: 1.1;
-      letter-spacing: -0.02em;
-      margin: 0 0 18px;
+      font-size: var(--text-display);
+      line-height: 1.08;
+      letter-spacing: -0.01em;
+      margin: 0 0 20px;
+    }
+    @media (min-width: 480px) {
+      h1 { font-size: 52px; }
     }
     .lead {
-      font-size: 17px;
+      font-size: var(--text-body);
       color: var(--muted);
-      line-height: 1.55;
+      line-height: 1.65;
       margin: 0 0 40px;
-      max-width: 520px;
     }
+
+    /* ── Props ── */
     .props {
+      list-style: none;
+      margin: 0 0 52px;
+      padding: 0;
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      margin: 0 0 48px;
+      gap: 16px;
     }
     .prop {
       display: flex;
-      gap: 12px;
+      gap: 13px;
       align-items: flex-start;
     }
-    .prop .dot {
-      width: 6px; height: 6px;
-      background: var(--ink);
+    .prop-dot {
+      width: 5px;
+      height: 5px;
+      background: var(--accent-warm);
       border-radius: 999px;
       margin-top: 9px;
-      flex: 0 0 auto;
+      flex-shrink: 0;
     }
     .prop p {
       margin: 0;
-      font-size: 15px;
-      color: var(--ink);
-      line-height: 1.5;
+      font-size: var(--text-body);
+      line-height: 1.55;
     }
-    .prop p span {
-      color: var(--muted);
+    .prop-lead { font-weight: 500; color: var(--ink); }
+    .prop-tail { color: var(--muted); }
+
+    /* ── CTA section ── */
+    #section-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 14px;
     }
-    .cta {
+    .btn-pill {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 16px 24px;
-      background: var(--ink);
-      color: #fff;
-      border: 1px solid var(--ink);
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 500;
-      text-decoration: none;
-      letter-spacing: 0.01em;
-      transition: opacity 0.15s ease;
       width: 100%;
       max-width: 320px;
+      padding: 17px 28px;
+      background: var(--ink);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-pill);
+      font-family: inherit;
+      font-size: var(--text-eyebrow);
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       cursor: pointer;
+      transition: opacity var(--transition);
     }
-    .cta:hover { opacity: 0.88; }
-    .cta:disabled { opacity: 0.5; cursor: not-allowed; }
-    .cta-ghost {
-      background: transparent;
-      color: var(--ink);
-      border-color: var(--line);
+    .btn-pill:hover { opacity: 0.88; }
+    .btn-pill:active { opacity: 0.76; }
+    .invite-caption {
+      font-size: var(--text-caption);
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    /* ── Email form (shown after GET STARTED) ── */
+    #section-form {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 320px;
+      width: 100%;
     }
     .auth-input {
       width: 100%;
-      max-width: 320px;
-      padding: 16px 24px;
+      padding: 15px 18px;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: var(--radius);
       font-size: 16px;
       background: #fff;
       color: var(--ink);
-      display: block;
-      margin-bottom: 10px;
       font-family: inherit;
+      transition: border-color var(--transition);
     }
     .auth-input:focus { outline: none; border-color: var(--ink); }
-    .auth-msg {
+    .btn-send {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 15px 24px;
+      background: var(--ink);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: inherit;
       font-size: 15px;
-      color: var(--muted);
-      margin: 0 0 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity var(--transition);
+    }
+    .btn-send:hover { opacity: 0.88; }
+    .btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Sent / loading states ── */
+    #section-sent, #section-loading {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
       max-width: 320px;
     }
+    .auth-msg {
+      font-size: var(--text-body);
+      color: var(--muted);
+      margin: 0;
+    }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 15px 24px;
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity var(--transition);
+    }
+    .btn-ghost:hover { opacity: 0.88; }
+
+    /* ── Error ── */
     .auth-err {
       font-size: 14px;
       color: #a43030;
-      margin: 8px 0 0;
+      margin: 6px 0 0;
       max-width: 320px;
       display: none;
     }
+
+    /* ── Footer ── */
     footer {
-      margin-top: 56px;
-      font-size: 12px;
+      margin-top: 64px;
+      font-size: var(--text-caption);
       color: var(--muted);
-      letter-spacing: 0.04em;
-    }
-    @media (min-width: 720px) {
-      h1 { font-size: 52px; }
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="wordmark">Vesti</div>
-      <div class="beta">Beta</div>
+      <div class="wordmark">
+        <svg class="v-mark" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="15" cy="15" r="14" stroke="currentColor" stroke-width="1.25"/>
+          <path d="M9.5 10L15 21L20.5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="wordmark-text" data-i18n="wordmark">Vesti</span>
+      </div>
+      <span class="beta-pill" data-i18n="beta">Beta</span>
     </header>
+
     <main>
-      <h1>Your wardrobe, intelligent.</h1>
-      <p class="lead">Style what you own. Built for how you actually get dressed — for special occasions, for the boardroom or for Tuesday.</p>
-      <div class="props">
-        <div class="prop"><span class="dot"></span><p>Photograph what's already in your closet. <span>We catalogue it.</span></p></div>
-        <div class="prop"><span class="dot"></span><p>Tap an occasion. <span>We pull together a look from your own pieces.</span></p></div>
-        <div class="prop"><span class="dot"></span><p>Made for Beirut, Dubai, and the diaspora. <span>Climate, dress code, and context built in.</span></p></div>
+      <h1 data-i18n="headline">Your wardrobe, intelligent.</h1>
+      <p class="lead" data-i18n="subhead">Style what you own. Built for how you actually get dressed — for special occasions, for the boardroom or for Tuesday.</p>
+
+      <ul class="props">
+        <li class="prop">
+          <span class="prop-dot"></span>
+          <p><span class="prop-lead" data-i18n="prop1_lead">Photograph what's already in your closet.</span> <span class="prop-tail" data-i18n="prop1_tail">We catalogue it.</span></p>
+        </li>
+        <li class="prop">
+          <span class="prop-dot"></span>
+          <p><span class="prop-lead" data-i18n="prop2_lead">Tap an occasion.</span> <span class="prop-tail" data-i18n="prop2_tail">We pull together a look from your own pieces.</span></p>
+        </li>
+        <li class="prop">
+          <span class="prop-dot"></span>
+          <p><span class="prop-lead" data-i18n="prop3_lead">Made for Beirut, Dubai, and the diaspora.</span> <span class="prop-tail" data-i18n="prop3_tail">Climate, dress code, and context built in.</span></p>
+        </li>
+      </ul>
+
+      <!-- Default: pill CTA -->
+      <div id="section-cta">
+        <button id="btn-get-started" class="btn-pill" type="button" data-i18n="cta">Get Started</button>
+        <p class="invite-caption" data-i18n="invite_only">Invite-only beta</p>
       </div>
-      <div id="auth-section" style="max-width:320px;">
-        <!-- auth-form: default visible state -->
-        <div id="auth-form">
-          <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email" />
-          <button id="auth-btn" class="cta" type="button">Get started →</button>
-        </div>
-        <!-- auth-sent: shown after OTP dispatched -->
-        <div id="auth-sent" style="display:none">
-          <p class="auth-msg">Check your email — magic link sent.</p>
-          <button id="auth-resend" class="cta cta-ghost" type="button">Resend</button>
-        </div>
-        <!-- auth-loading: shown while routing after sign-in -->
-        <div id="auth-loading" style="display:none">
-          <p class="auth-msg">Signing you in…</p>
-        </div>
-        <p id="auth-err" class="auth-err"></p>
+
+      <!-- Email form (revealed after GET STARTED click) -->
+      <div id="section-form">
+        <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email" />
+        <button id="auth-btn" class="btn-send" type="button" data-i18n="send_link">Send magic link →</button>
       </div>
+
+      <!-- Sent state -->
+      <div id="section-sent">
+        <p class="auth-msg" data-i18n="sent_msg">Check your email — magic link sent.</p>
+        <button id="auth-resend" class="btn-ghost" type="button" data-i18n="resend">Resend</button>
+      </div>
+
+      <!-- Loading state -->
+      <div id="section-loading">
+        <p class="auth-msg" data-i18n="signing_in">Signing you in…</p>
+      </div>
+
+      <p id="auth-err" class="auth-err"></p>
     </main>
-    <footer>Vesti — invite-only beta</footer>
+
+    <footer data-i18n="footer">Vesti — invite-only beta</footer>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
   (async function () {
+    const I18N = {
+      en: {
+        wordmark: "Vesti",
+        beta: "Beta",
+        headline: "Your wardrobe, intelligent.",
+        subhead: "Style what you own. Built for how you actually get dressed — for special occasions, for the boardroom or for Tuesday.",
+        prop1_lead: "Photograph what's already in your closet.",
+        prop1_tail: "We catalogue it.",
+        prop2_lead: "Tap an occasion.",
+        prop2_tail: "We pull together a look from your own pieces.",
+        prop3_lead: "Made for Beirut, Dubai, and the diaspora.",
+        prop3_tail: "Climate, dress code, and context built in.",
+        cta: "Get Started",
+        invite_only: "Invite-only beta",
+        send_link: "Send magic link →",
+        sent_msg: "Check your email — magic link sent.",
+        resend: "Resend",
+        signing_in: "Signing you in…",
+        footer: "Vesti — invite-only beta",
+      },
+      ar: {
+        wordmark: "Vesti",
+        beta: "تجريبي",
+        headline: "خزانتك، بذكاء.",
+        subhead: "نسّق ما تملك. مصمّم لكيفية ارتدائك الحقيقية — للمناسبات الخاصة، لاجتماعات العمل، أو ليوم ثلاثاء عادي.",
+        prop1_lead: "صوّر ما في خزانتك.",
+        prop1_tail: "نحن نصنّفه.",
+        prop2_lead: "اختر مناسبة.",
+        prop2_tail: "نختار لك إطلالة من قطعك.",
+        prop3_lead: "صُمّم لبيروت ودبي والمهجر.",
+        prop3_tail: "المناخ، قواعد اللباس، والسياق مدمجة.",
+        cta: "ابدأ الآن",
+        invite_only: "نسخة تجريبية بدعوة فقط",
+        send_link: "أرسل الرابط السحري →",
+        sent_msg: "تحقّق من بريدك — تم إرسال الرابط.",
+        resend: "إعادة الإرسال",
+        signing_in: "جارٍ تسجيل الدخول…",
+        footer: "Vesti — نسخة تجريبية بدعوة فقط",
+      }
+    };
+
     let _sb = null;
 
     function el(id) { return document.getElementById(id); }
 
     function showState(s) {
-      el("auth-form").style.display    = s === "form"    ? "" : "none";
-      el("auth-sent").style.display    = s === "sent"    ? "" : "none";
-      el("auth-loading").style.display = s === "loading" ? "" : "none";
+      el("section-cta").style.display     = s === "cta"     ? "flex"  : "none";
+      el("section-form").style.display    = s === "form"    ? "flex"  : "none";
+      el("section-sent").style.display    = s === "sent"    ? "flex"  : "none";
+      el("section-loading").style.display = s === "loading" ? "flex"  : "none";
     }
 
     function showErr(msg) {
@@ -238,6 +399,7 @@
       const cfg = await fetch("/api/auth-config").then(r => r.ok ? r.json() : null).catch(() => null);
       if (!cfg || !cfg.url || !cfg.anonKey) {
         showErr("Auth config unavailable. Refresh and try again.");
+        showState("cta");
         return;
       }
 
@@ -263,7 +425,7 @@
           if (session) {
             await routeAfterAuth(session);
           } else {
-            showState("form");
+            showState("cta");
           }
         } else if (event === "SIGNED_IN") {
           await routeAfterAuth(session);
@@ -271,10 +433,16 @@
       });
 
     } catch (err) {
-      showState("form");
+      showState("cta");
       showErr("Couldn't initialise auth. Refresh and try again.");
       console.error(err);
     }
+
+    // GET STARTED → reveal email form.
+    el("btn-get-started").addEventListener("click", () => {
+      showState("form");
+      el("auth-email").focus();
+    });
 
     // Send OTP.
     el("auth-btn").addEventListener("click", async () => {
@@ -292,7 +460,7 @@
         options: { emailRedirectTo: "https://vesti-1-0.vercel.app/" }
       });
       el("auth-btn").disabled = false;
-      el("auth-btn").textContent = "Get started →";
+      el("auth-btn").textContent = I18N.en.send_link;
       if (error) {
         showErr(error.message || "Couldn't send link. Try again.");
       } else {

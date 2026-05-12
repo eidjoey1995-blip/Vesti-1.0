@@ -3095,6 +3095,12 @@
         closet_add_garments: "Add garments",
         closet_empty_h: "Your closet is empty.",
         closet_empty_body: "Add a photo of your clothes to get started.",
+        subcat_tshirts: "T-shirts", subcat_shirts: "Shirts", subcat_polos: "Polos", subcat_knits: "Knits", subcat_other_tops: "Other tops",
+        subcat_jeans: "Jeans", subcat_chinos: "Chinos", subcat_trousers: "Trousers", subcat_shorts: "Shorts", subcat_skirts: "Skirts", subcat_other_bottoms: "Other bottoms",
+        subcat_jackets: "Jackets", subcat_coats: "Coats", subcat_blazers: "Blazers", subcat_cardigans: "Cardigans", subcat_other_outer: "Other outerwear",
+        subcat_suit_jackets: "Suit jackets", subcat_suit_trousers: "Suit trousers", subcat_other_suits: "Other suits",
+        subcat_sneakers: "Sneakers", subcat_loafers: "Loafers", subcat_boots: "Boots", subcat_dress_shoes: "Dress shoes", subcat_heels: "Heels", subcat_sandals: "Sandals", subcat_other_shoes: "Other shoes",
+        subcat_belts: "Belts", subcat_ties: "Ties", subcat_scarves: "Scarves", subcat_bags: "Bags", subcat_other_acc: "Other accessories",
         stylist_pick_prompt: "Tap a card to pull your look.",
         // Closet gaps
         gaps_step: "Closet analysis",
@@ -3335,6 +3341,12 @@
         closet_add_garments: "إضافة ملابس",
         closet_empty_h: "خزانتك فاضية.",
         closet_empty_body: "أضف صورة لملابسك وابدأ.",
+        subcat_tshirts: "تي شيرت", subcat_shirts: "قمصان", subcat_polos: "بولو", subcat_knits: "كنزات", subcat_other_tops: "قطع علوية أخرى",
+        subcat_jeans: "جينز", subcat_chinos: "شينو", subcat_trousers: "بنطلون", subcat_shorts: "شورت", subcat_skirts: "تنانير", subcat_other_bottoms: "قطع سفلية أخرى",
+        subcat_jackets: "جاكيتات", subcat_coats: "معاطف", subcat_blazers: "بليزر", subcat_cardigans: "كارديغان", subcat_other_outer: "ملابس خارجية أخرى",
+        subcat_suit_jackets: "جاكيت بدلة", subcat_suit_trousers: "بنطلون بدلة", subcat_other_suits: "بدل أخرى",
+        subcat_sneakers: "سنيكرز", subcat_loafers: "لوفرز", subcat_boots: "بوت", subcat_dress_shoes: "أحذية رسمية", subcat_heels: "كعب", subcat_sandals: "صندل", subcat_other_shoes: "أحذية أخرى",
+        subcat_belts: "أحزمة", subcat_ties: "ربطات عنق", subcat_scarves: "وشاح", subcat_bags: "شنط", subcat_other_acc: "إكسسوارات أخرى",
         stylist_pick_prompt: "اضغط على بطاقة لنجهّز إطلالتك.",
         // Closet gaps
         gaps_step: "تحليل الخزانة",
@@ -3704,6 +3716,74 @@
       shoes:   ["shoe", "sneaker", "boot", "loafer", "derby", "oxford", "heel", "sandal", "flat", "mule", "slipper"],
       acc:     ["bag", "tote", "briefcase", "watch", "accessory", "belt", "tie", "hat", "cap", "scarf", "jewel", "ring", "necklace", "bracelet", "earring", "cufflink", "wallet"],
     };
+    // Sub-section definitions per filter tab.
+    // Ordered: first match per garment wins; last entry (empty matches) is the fallback bucket.
+    const SUBCAT_MAP = {
+      tops: [
+        { key: "subcat_tshirts",    matches: ["t-shirt", "tee", "tank"] },
+        { key: "subcat_shirts",     matches: ["shirt", "button-down", "oxford"] },
+        { key: "subcat_polos",      matches: ["polo"] },
+        { key: "subcat_knits",      matches: ["jumper", "sweater", "knit", "cardigan", "pullover", "turtleneck"] },
+        { key: "subcat_other_tops", matches: [] },
+      ],
+      bottoms: [
+        { key: "subcat_jeans",         matches: ["jean", "denim"] },
+        { key: "subcat_chinos",        matches: ["chino"] },
+        { key: "subcat_trousers",      matches: ["trouser", "pant", "slack"] },
+        { key: "subcat_shorts",        matches: ["short"] },
+        { key: "subcat_skirts",        matches: ["skirt"] },
+        { key: "subcat_other_bottoms", matches: [] },
+      ],
+      outer: [
+        { key: "subcat_jackets",     matches: ["jacket"] },
+        { key: "subcat_coats",       matches: ["coat", "trench"] },
+        { key: "subcat_blazers",     matches: ["blazer"] },
+        { key: "subcat_cardigans",   matches: ["cardigan"] },
+        { key: "subcat_other_outer", matches: [] },
+      ],
+      suits: [
+        { key: "subcat_suit_jackets",  matches: ["suit jacket"] },
+        { key: "subcat_suit_trousers", matches: ["suit trouser", "suit pant"] },
+        { key: "subcat_other_suits",   matches: [] },
+      ],
+      shoes: [
+        { key: "subcat_sneakers",    matches: ["sneaker", "trainer"] },
+        { key: "subcat_loafers",     matches: ["loafer", "moccasin"] },
+        { key: "subcat_boots",       matches: ["boot"] },
+        { key: "subcat_dress_shoes", matches: ["oxford", "derby", "brogue", "dress shoe"] },
+        { key: "subcat_heels",       matches: ["heel", "pump", "stiletto"] },
+        { key: "subcat_sandals",     matches: ["sandal", "flip-flop", "slide"] },
+        { key: "subcat_other_shoes", matches: [] },
+      ],
+      acc: [
+        { key: "subcat_belts",     matches: ["belt"] },
+        { key: "subcat_ties",      matches: ["tie", "bow tie"] },
+        { key: "subcat_scarves",   matches: ["scarf"] },
+        { key: "subcat_bags",      matches: ["bag", "tote", "briefcase", "backpack"] },
+        { key: "subcat_other_acc", matches: [] },
+      ],
+    };
+
+    // Returns [{key, items}] for the active tab, empty buckets dropped — or null for "all".
+    function groupBySubcat(garments) {
+      const sections = SUBCAT_MAP[closetFilter];
+      if (!sections) return null;
+      const buckets = sections.map(s => ({ key: s.key, items: [] }));
+      const fallback = buckets[buckets.length - 1];
+      outer:
+      for (const g of garments) {
+        const cat = (g.category || "").toLowerCase();
+        for (let si = 0; si < sections.length - 1; si++) {
+          if (sections[si].matches.some(m => cat.includes(m))) {
+            buckets[si].items.push(g);
+            continue outer;
+          }
+        }
+        fallback.items.push(g);
+      }
+      return buckets.filter(b => b.items.length > 0);
+    }
+
     let closetFilter = "all";
 
     function filterGarments(garments) {
@@ -3805,21 +3885,35 @@
       if (el) el.textContent = String(n);
     }
 
+    function renderTile(g, i) {
+      const accent = TILE_ACCENTS[i % TILE_ACCENTS.length];
+      const sym = symbolFor(g.category);
+      const thumb = g.thumb_url
+        ? `<img class="tile-thumb" src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy">`
+        : `<svg viewBox="0 0 50 60"><use href="#${sym}"/></svg>`;
+      return `<div class="closet-tile ${accent}" data-goto="item-detail" data-garment-id="${g.id}">`
+        + thumb + `</div>`;
+    }
+
     function renderClosetGrid(grid, more, garments) {
       setStat("stat-items", garments.length);
       const filters = document.querySelector('section[data-screen="closet"] .closet-filters');
       if (filters) filters.hidden = false;
       const visible = filterGarments(garments);
-      grid.innerHTML = visible.map((g, i) => {
-        const accent = TILE_ACCENTS[i % TILE_ACCENTS.length];
-        const sym = symbolFor(g.category);
-        const thumb = g.thumb_url
-          ? `<img class="tile-thumb" src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy">`
-          : `<svg viewBox="0 0 50 60"><use href="#${sym}"/></svg>`;
-        return `<div class="closet-tile ${accent}" data-goto="item-detail" data-garment-id="${g.id}">`
-          + thumb
-          + `</div>`;
-      }).join("");
+      const groups = groupBySubcat(visible);
+
+      if (!groups) {
+        grid.innerHTML = visible.map((g, i) => renderTile(g, i)).join("");
+      } else {
+        const d = i18n[state.lang] || i18n.en;
+        let ti = 0;
+        grid.innerHTML = groups.map(({ key, items }) => {
+          const label = (d[key] || key).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+          const header = `<div style="grid-column:1/-1;padding:16px 0 2px;"><p class="h-eyebrow" style="margin:0;">${label}</p></div>`;
+          return header + items.map(g => renderTile(g, ti++)).join("");
+        }).join("");
+      }
+
       if (more) {
         const total = garments.length;
         const shown = visible.length;

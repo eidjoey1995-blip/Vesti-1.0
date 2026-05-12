@@ -835,6 +835,41 @@
     .kv-k { color: var(--ink-mid); }
     .kv-v { color: var(--ink); font-weight: 500; }
 
+    /* Edit garment form */
+    .edit-field { margin-bottom: 16px; }
+    .edit-label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-mid);
+      margin-bottom: 6px;
+    }
+    .edit-input, .edit-select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--hairline-soft);
+      border-radius: 10px;
+      font-size: 15px;
+      background: var(--surface);
+      color: var(--ink);
+      font-family: inherit;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .edit-input:focus, .edit-select:focus { outline: none; border-color: var(--ink); }
+    .edit-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236f6a64' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    html[dir="rtl"] .edit-select {
+      background-position: left 14px center;
+      padding-right: 14px;
+      padding-left: 36px;
+    }
+
     /* ==========================================================
        Stylist
        ========================================================== */
@@ -2316,7 +2351,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
               <div class="micro" data-i18n="item_source">Auto-extracted · photo</div>
-              <button class="icon-btn" aria-label="Edit">
+              <button class="icon-btn" id="item-edit-btn" aria-label="Edit">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
             </div>
@@ -2328,19 +2363,51 @@
             </div>
 
             <div style="padding:0 24px;">
-              <!-- BETA: brand spans empty (data-persona-brand="item" cleared in m persona overrides). -->
-              <p class="h-eyebrow"><span data-i18n="category_shirt">Linen shirt</span></p>
-              <h2 class="h2" data-i18n="item_name">Oversized tencel shirt, cream.</h2>
+              <!-- VIEW MODE: category eyebrow + name + KV rows -->
+              <div id="item-view-meta">
+                <!-- BETA: brand spans empty (data-persona-brand="item" cleared in m persona overrides). -->
+                <p class="h-eyebrow"><span data-i18n="category_shirt">Linen shirt</span></p>
+                <h2 class="h2" data-i18n="item_name">Oversized tencel shirt, cream.</h2>
+                <div style="margin-top:10px">
+                  <!-- BETA: brand KV row hidden — receipt-forwarding (which populates it) is post-V1. -->
+                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_brand">Brand</span><span class="kv-v" data-persona-brand="item"></span></div>
+                  <div class="kv"><span class="kv-k" data-i18n="kv_color">Colour</span><span class="kv-v" data-i18n="val_cream">Cream</span></div>
+                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_size">Size</span><span class="kv-v">M</span></div>
+                  <!-- BETA: paid + bought + worn rows hidden — populated by receipt-forwarding (post-V1). -->
+                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_price">Paid</span><span class="kv-v" data-price-aed="395">AED 395</span></div>
+                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_bought">Bought</span><span class="kv-v" data-i18n="val_date">14 Feb</span></div>
+                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_worn">Worn</span><span class="kv-v" data-i18n="val_worn">6 times · AED 65/wear</span></div>
+                </div>
+              </div>
 
-              <div style="margin-top:10px">
-                <!-- BETA: brand KV row hidden — receipt-forwarding (which populates it) is post-V1. -->
-                <div class="kv" hidden><span class="kv-k" data-i18n="kv_brand">Brand</span><span class="kv-v" data-persona-brand="item"></span></div>
-                <div class="kv"><span class="kv-k" data-i18n="kv_color">Colour</span><span class="kv-v" data-i18n="val_cream">Cream</span></div>
-                <div class="kv" hidden><span class="kv-k" data-i18n="kv_size">Size</span><span class="kv-v">M</span></div>
-                <!-- BETA: paid + bought + worn rows hidden — populated by receipt-forwarding (post-V1). -->
-                <div class="kv" hidden><span class="kv-k" data-i18n="kv_price">Paid</span><span class="kv-v" data-price-aed="395">AED 395</span></div>
-                <div class="kv" hidden><span class="kv-k" data-i18n="kv_bought">Bought</span><span class="kv-v" data-i18n="val_date">14 Feb</span></div>
-                <div class="kv" hidden><span class="kv-k" data-i18n="kv_worn">Worn</span><span class="kv-v" data-i18n="val_worn">6 times · AED 65/wear</span></div>
+              <!-- EDIT MODE: inline form, hidden by default -->
+              <div id="item-edit-form" style="display:none; padding-top:6px;">
+                <div class="edit-field">
+                  <label class="edit-label" for="item-edit-name" data-i18n="label_name">Name</label>
+                  <input id="item-edit-name" class="edit-input" type="text" autocomplete="off" />
+                </div>
+                <div class="edit-field">
+                  <label class="edit-label" for="item-edit-category" data-i18n="label_category">Category</label>
+                  <select id="item-edit-category" class="edit-select">
+                    <option value="tops" data-i18n="filter_tops">Tops</option>
+                    <option value="bottoms" data-i18n="filter_bottoms">Bottoms</option>
+                    <option value="outer" data-i18n="filter_outer">Outerwear</option>
+                    <option value="suits" data-i18n="filter_suits">Suits</option>
+                    <option value="shoes" data-i18n="filter_shoes">Shoes</option>
+                    <option value="acc" data-i18n="filter_acc">Accessories</option>
+                  </select>
+                </div>
+                <div class="edit-field">
+                  <label class="edit-label" for="item-edit-subcat" data-i18n="label_subcategory">Sub-category</label>
+                  <select id="item-edit-subcat" class="edit-select">
+                    <!-- populated dynamically when category changes -->
+                  </select>
+                </div>
+                <div class="edit-field">
+                  <label class="edit-label" for="item-edit-color" data-i18n="label_color">Color</label>
+                  <input id="item-edit-color" class="edit-input" type="text" autocomplete="off" />
+                </div>
+                <p id="item-edit-error" style="display:none; color:var(--err); font-size:12px; margin:2px 0 8px;" data-i18n="edit_save_error">Couldn't save changes. Try again.</p>
               </div>
 
               <!-- BETA: "Pairs well with" section — populated dynamically from /api/pair-garment. -->
@@ -2351,12 +2418,24 @@
                 <div id="item-pairs-list" class="outfit-pieces" style="margin-top:8px;display:none;"></div>
               </div>
 
-              <div class="spacer"></div>
-              <button class="btn btn-primary btn-block" data-goto="stylist" data-i18n="item_style_with">Style with this piece</button>
-              <div style="height:10px"></div>
-              <button class="btn btn-ghost btn-block" id="item-delete-btn" data-i18n="item_delete">Delete garment</button>
-              <p id="item-delete-error" style="display:none; color:var(--err); font-size:12px; text-align:center; margin:8px 0 0;" data-i18n="item_delete_err">Delete failed. Try again.</p>
-              <div style="height:16px"></div>
+              <!-- VIEW MODE ACTIONS -->
+              <div id="item-view-actions">
+                <div class="spacer"></div>
+                <button class="btn btn-primary btn-block" data-goto="stylist" data-i18n="item_style_with">Style with this piece</button>
+                <div style="height:10px"></div>
+                <button class="btn btn-ghost btn-block" id="item-delete-btn" data-i18n="item_delete">Delete garment</button>
+                <p id="item-delete-error" style="display:none; color:var(--err); font-size:12px; text-align:center; margin:8px 0 0;" data-i18n="item_delete_err">Delete failed. Try again.</p>
+                <div style="height:16px"></div>
+              </div>
+
+              <!-- EDIT MODE ACTIONS -->
+              <div id="item-edit-actions" style="display:none">
+                <div class="spacer"></div>
+                <button class="btn btn-primary btn-block" id="item-edit-save-btn" type="button" data-i18n="btn_save">Save</button>
+                <div style="height:10px"></div>
+                <button class="btn btn-ghost btn-block" id="item-edit-cancel-btn" type="button" data-i18n="btn_cancel">Cancel</button>
+                <div style="height:16px"></div>
+              </div>
             </div>
           </section>
 
@@ -3139,6 +3218,9 @@
         item_delete: "Delete garment",
         item_delete_confirm: "Delete this garment? This can't be undone.",
         item_delete_err: "Delete failed. Try again.",
+        btn_edit: "Edit", btn_save: "Save", btn_cancel: "Cancel",
+        label_name: "Name", label_category: "Category", label_subcategory: "Sub-category", label_color: "Color",
+        edit_save_error: "Couldn't save changes. Try again.",
         // Stylist
         stylist_eyebrow: "AI Stylist",
         stylist_h: "For the meeting, for iftar, for Tuesday.",
@@ -3384,6 +3466,9 @@
         item_delete: "حذف القطعة",
         item_delete_confirm: "حذف هذه القطعة؟ لا يمكن التراجع عن ذلك.",
         item_delete_err: "فشل الحذف. حاول مجدداً.",
+        btn_edit: "تعديل", btn_save: "حفظ", btn_cancel: "إلغاء",
+        label_name: "الاسم", label_category: "الفئة", label_subcategory: "الفئة الفرعية", label_color: "اللون",
+        edit_save_error: "تعذّر حفظ التغييرات. حاول مرة أخرى.",
         stylist_eyebrow: "المصمم الذكي",
         stylist_h: "للاجتماع، للإفطار، ليوم الثلاثاء.",
         stylist_lead: "اختر مناسبة. ندمج خزانتك مع ثلاث قطع من الفيد.",
@@ -4209,6 +4294,7 @@
     // then populate the item-detail screen.
     function populateItemDetail(g) {
       if (!g) return;
+      exitEditMode();
       state.currentGarment = g;
       const root = document.querySelector('section[data-screen="item-detail"]');
       if (!root) return;
@@ -4305,6 +4391,129 @@
           console.error("delete-garment error:", err);
         } finally {
           deleteBtn.disabled = false;
+        }
+      });
+    }
+
+    // -------- Edit garment --------
+
+    const _editBtn        = document.getElementById("item-edit-btn");
+    const _viewMeta       = document.getElementById("item-view-meta");
+    const _editForm       = document.getElementById("item-edit-form");
+    const _viewActions    = document.getElementById("item-view-actions");
+    const _editActions    = document.getElementById("item-edit-actions");
+    const _editNameInput  = document.getElementById("item-edit-name");
+    const _editCatSelect  = document.getElementById("item-edit-category");
+    const _editSubSelect  = document.getElementById("item-edit-subcat");
+    const _editColorInput = document.getElementById("item-edit-color");
+    const _editSaveBtn    = document.getElementById("item-edit-save-btn");
+    const _editCancelBtn  = document.getElementById("item-edit-cancel-btn");
+    const _editError      = document.getElementById("item-edit-error");
+
+    function garmentCategoryGroup(g) {
+      const cat = (g.category || g.subcategory || "").toLowerCase();
+      for (const [group, keys] of Object.entries(FILTER_CATS)) {
+        if (keys.some(k => cat.includes(k))) return group;
+      }
+      return "tops";
+    }
+
+    function populateSubcatOptions(categoryGroup, selectedSubcat) {
+      if (!_editSubSelect) return;
+      const d = i18n[state.lang] || i18n.en;
+      const sections = SUBCAT_MAP[categoryGroup] || [];
+      _editSubSelect.innerHTML = sections.map(s => {
+        const label = d[s.key] || s.key;
+        const sel = selectedSubcat && label.toLowerCase() === selectedSubcat.toLowerCase() ? " selected" : "";
+        return `<option value="${label}"${sel}>${label}</option>`;
+      }).join("");
+    }
+
+    function exitEditMode() {
+      if (_viewMeta)    _viewMeta.style.display    = "";
+      if (_editForm)    _editForm.style.display     = "none";
+      if (_viewActions) _viewActions.style.display  = "";
+      if (_editActions) _editActions.style.display  = "none";
+      if (_editError)   _editError.style.display    = "none";
+    }
+
+    function enterEditMode(g) {
+      if (!g || !_editForm) return;
+      _editNameInput.value  = g.description || ((g.color ? g.color + " " : "") + (g.subcategory || g.category || ""));
+      _editColorInput.value = g.color || "";
+      const catGroup = garmentCategoryGroup(g);
+      _editCatSelect.value = catGroup;
+      populateSubcatOptions(catGroup, g.subcategory);
+
+      _viewMeta.style.display    = "none";
+      _editForm.style.display    = "";
+      _viewActions.style.display = "none";
+      _editActions.style.display = "";
+      _editError.style.display   = "none";
+      _editNameInput.focus();
+    }
+
+    if (_editBtn) {
+      _editBtn.addEventListener("click", () => {
+        const g = state.currentGarment;
+        if (g) enterEditMode(g);
+      });
+    }
+
+    if (_editCatSelect) {
+      _editCatSelect.addEventListener("change", () => {
+        populateSubcatOptions(_editCatSelect.value, null);
+      });
+    }
+
+    if (_editCancelBtn) {
+      _editCancelBtn.addEventListener("click", () => exitEditMode());
+    }
+
+    if (_editSaveBtn) {
+      _editSaveBtn.addEventListener("click", async () => {
+        const g = state.currentGarment;
+        if (!g) return;
+
+        const updates = {};
+        const newName = _editNameInput.value.trim();
+        if (newName) updates.name = newName;
+        const newCat = _editCatSelect.value;
+        if (newCat) updates.category = newCat;
+        const newSubcat = _editSubSelect.value;
+        if (newSubcat) updates.sub_category = newSubcat;
+        const newColor = _editColorInput.value.trim();
+        if (newColor) updates.color = newColor;
+
+        _editSaveBtn.disabled = true;
+        if (_editError) _editError.style.display = "none";
+
+        try {
+          const r = await fetch("/api/update-garment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify({ garment_id: g.id, updates })
+          });
+          const json = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(json?.error?.message || ("HTTP " + r.status));
+
+          // Merge API response back into local garment object.
+          const row = json.garment || {};
+          g.description = row.description ?? g.description;
+          g.category    = row.category    ?? g.category;
+          g.subcategory = row.subcategory ?? g.subcategory;
+          g.color       = row.color       ?? g.color;
+
+          // Keep closetState in sync so the tile reflects the correction.
+          const idx = closetState.garments.findIndex(x => x.id === g.id);
+          if (idx !== -1) closetState.garments[idx] = { ...closetState.garments[idx], ...g };
+
+          populateItemDetail(g);   // re-renders view and calls exitEditMode()
+        } catch (err) {
+          if (_editError) _editError.style.display = "";
+          console.error("update-garment error:", err);
+        } finally {
+          _editSaveBtn.disabled = false;
         }
       });
     }

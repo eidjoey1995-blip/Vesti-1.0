@@ -79,6 +79,12 @@ export default async function handler(req, res) {
       .maybeSingle()
   ]);
 
+  // Diagnostic: log raw PostgREST response for each query so we can verify
+  // the user_id filter is being applied (count, HTTP status, any error).
+  console.log("get-stats garmentsRes", { count: garmentsRes.count, status: garmentsRes.status, error: garmentsRes.error?.message ?? null, userId });
+  console.log("get-stats outfitsRes", { count: outfitsRes.count, status: outfitsRes.status, error: outfitsRes.error?.message ?? null, userId });
+  console.log("get-stats firstGarmentRes", { data: firstGarmentRes.data, status: firstGarmentRes.status, error: firstGarmentRes.error?.message ?? null, userId });
+
   if (garmentsRes.error) {
     console.error("get-stats garments query failed", { error: garmentsRes.error.message, userId });
     return res.status(500).json({
@@ -102,7 +108,7 @@ export default async function handler(req, res) {
     daysActive = Math.max(1, Math.floor((Date.now() - first.getTime()) / 86_400_000) + 1);
   }
 
-  console.log("get-stats counts", { garments_count: garmentsCount, outfits_count: outfitsCount, days_active: daysActive, userId });
+  console.log("get-stats result", { userId, garments_count: garmentsCount, outfits_count: outfitsCount, days_active: daysActive });
 
   return res.status(200).json({
     garments_count: garmentsCount,

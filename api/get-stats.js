@@ -60,30 +60,41 @@ export default async function handler(req, res) {
 
   console.log("get-stats user", { userId, authHeader: (req.headers.authorization || "").slice(0, 20) + "..." });
 
-  // Run all three queries in parallel.
-  const [garmentsRes, outfitsRes, firstGarmentRes] = await Promise.all([
-    supabase
-      .from("garments")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
-    supabase
-      .from("outfits")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
-    supabase
-      .from("garments")
-      .select("created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle()
+  // ── DIAG: sample the outfits table two ways so we can compare ──────────────
+  // 1. First 5 rows WHERE user_id = userId  (should show 0 rows for this user)
+  // 2. Global count with NO filter           (should show total table size)
+  const [sampleOutfitsRes, globalOutfitsRes] = await Promise.all([
+    supabase.from("outfits").select("id, user_id, created_at").eq("user_id", userId).limit(5),
+    supabase.from("outfits").select("*", { count: "exact", head: true })
   ]);
+  console.log("get-stats: outfits sample", { userId, sample: sampleOutfitsRes.data, error: sampleOutfitsRes.error?.message ?? null });
+  console.log("get-stats: outfits global count", { globalOutfits: globalOutfitsRes.count, error: globalOutfitsRes.error?.message ?? null });
+  // ── END DIAG ────────────────────────────────────────────────────────────────
 
-  // Diagnostic: log raw PostgREST response for each query so we can verify
-  // the user_id filter is being applied (count, HTTP status, any error).
-  console.log("get-stats garmentsRes", { count: garmentsRes.count, status: garmentsRes.status, error: garmentsRes.error?.message ?? null, userId });
-  console.log("get-stats outfitsRes", { count: outfitsRes.count, status: outfitsRes.status, error: outfitsRes.error?.message ?? null, userId });
-  console.log("get-stats firstGarmentRes", { data: firstGarmentRes.data, status: firstGarmentRes.status, error: firstGarmentRes.error?.message ?? null, userId });
+  // Run queries sequentially so BEFORE/AFTER logs are unambiguous.
+  console.log("get-stats: about to query garments", { userId, filter: "user_id=" + userId });
+  const garmentsRes = await supabase
+    .from("garments")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+  console.log("get-stats: garments result", { userId, count: garmentsRes.count, error: garmentsRes.error?.message });
+
+  console.log("get-stats: about to query outfits", { userId, filter: "user_id=" + userId });
+  const outfitsRes = await supabase
+    .from("outfits")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+  console.log("get-stats: outfits result", { userId, count: outfitsRes.count, error: outfitsRes.error?.message });
+
+  console.log("get-stats: about to query firstGarment", { userId, filter: "user_id=" + userId });
+  const firstGarmentRes = await supabase
+    .from("garments")
+    .select("created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  console.log("get-stats: firstGarment result", { userId, data: firstGarmentRes.data, error: firstGarmentRes.error?.message });
 
   if (garmentsRes.error) {
     console.error("get-stats garments query failed", { error: garmentsRes.error.message, userId });

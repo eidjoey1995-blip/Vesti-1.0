@@ -22,6 +22,10 @@ async function resolveUser(req, supabase) {
   }
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) {
+    console.error("get-stats resolveUser failed", {
+      error: error?.message,
+      tokenPrefix: token.slice(0, 20) + "...",
+    });
     return { userId: null, err: { code: "unauthorized", message: error?.message || "Invalid token" } };
   }
   return { userId: user.id, err: null };
@@ -48,6 +52,14 @@ export default async function handler(req, res) {
   const { userId, err } = await resolveUser(req, supabase);
   if (err) return res.status(401).json({ error: err });
 
+  // Hard guard: never run unfiltered queries if userId is falsy for any reason.
+  if (!userId) {
+    console.error("get-stats: userId is falsy after resolveUser — refusing unfiltered query");
+    return res.status(401).json({ error: { code: "unauthorized", message: "Could not determine user identity" } });
+  }
+
+  console.log("get-stats user", { userId, authHeader: (req.headers.authorization || "").slice(0, 20) + "..." });
+
   // Run all three queries in parallel.
   const [garmentsRes, outfitsRes, firstGarmentRes] = await Promise.all([
     supabase
@@ -68,8 +80,16 @@ export default async function handler(req, res) {
   ]);
 
   if (garmentsRes.error) {
+    console.error("get-stats garments query failed", { error: garmentsRes.error.message, userId });
     return res.status(500).json({
       error: { code: "select_failed", message: garmentsRes.error.message }
+    });
+  }
+
+  if (outfitsRes.error) {
+    console.error("get-stats outfits query failed", { error: outfitsRes.error.message, userId });
+    return res.status(500).json({
+      error: { code: "select_failed", message: outfitsRes.error.message }
     });
   }
 
@@ -81,6 +101,8 @@ export default async function handler(req, res) {
     const first = new Date(firstGarmentRes.data.created_at);
     daysActive = Math.max(1, Math.floor((Date.now() - first.getTime()) / 86_400_000) + 1);
   }
+
+  console.log("get-stats counts", { garments_count: garmentsCount, outfits_count: outfitsCount, days_active: daysActive, userId });
 
   return res.status(200).json({
     garments_count: garmentsCount,

@@ -60,26 +60,42 @@ async function removeBackground(imageUrl) {
   }
   if (!version) return null;
 
-  // Step B: submit prediction.
+  // Step B: submit prediction (single retry on 429).
   const ENDPOINT = "https://api.replicate.com/v1/predictions";
+  const submitHeaders = {
+    "Authorization": "Token " + token,
+    "Content-Type": "application/json",
+    "Prefer": "wait=5"
+  };
+  const submitBody = JSON.stringify({ version, input: { image: imageUrl } });
   console.log("rmbg request", { url: ENDPOINT, hasToken: !!token, version, imageUrl });
 
   let prediction;
   try {
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Authorization": "Token " + token,
-        "Content-Type": "application/json",
-        "Prefer": "wait=5"
-      },
-      body: JSON.stringify({ version, input: { image: imageUrl } })
-    });
-    if (!res.ok) {
+    let res = await fetch(ENDPOINT, { method: "POST", headers: submitHeaders, body: submitBody });
+
+    if (res.status === 429) {
+      let retryAfterSec = 5;
+      try {
+        const errJson = await res.json();
+        const parsed = Number(errJson?.retry_after);
+        if (Number.isFinite(parsed) && parsed > 0) retryAfterSec = parsed;
+      } catch (_) {}
+      retryAfterSec = Math.min(retryAfterSec, 8);
+      console.warn("rmbg 429 throttled, retrying in", retryAfterSec, "seconds");
+      await new Promise(r => setTimeout(r, retryAfterSec * 1000));
+      res = await fetch(ENDPOINT, { method: "POST", headers: submitHeaders, body: submitBody });
+      if (!res.ok) {
+        const body = await res.text();
+        console.warn("rmbg retry exhausted", res.status, body);
+        return null;
+      }
+    } else if (!res.ok) {
       const body = await res.text();
       console.warn("rmbg submit HTTP", res.status, body);
       return null;
     }
+
     prediction = await res.json();
   } catch (err) {
     console.warn("rmbg submit error:", err.message);

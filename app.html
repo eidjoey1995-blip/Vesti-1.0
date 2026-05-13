@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Vesti" />
   <meta name="theme-color" content="#FAF7F2" />
   <title>Vesti — Interactive Prototype</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -19,6 +20,11 @@
        60% cream · 25% sage/forest · 10% terracotta · 5% ink
        ========================================================== */
     :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+
       --cream: #FAF7F2;
       --card-cream: #F2EDE4;
       --card-sage: #E8EFE6;
@@ -1465,15 +1471,15 @@
       /* Hide the fake iOS status bar — the real iPhone shows its own */
       .status-bar { display: none; }
 
-      /* Screens fill the full mobile viewport */
-      .screens { padding-top: env(safe-area-inset-top); }
+      /* Screens fill the full mobile viewport — top safe area owned here */
+      .screens { padding-top: var(--safe-top); }
 
       /* Bottom nav respects the home-indicator safe area */
       .tab-nav {
-        height: calc(64px + env(safe-area-inset-bottom));
-        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        height: calc(64px + var(--safe-bottom));
+        padding-bottom: calc(12px + var(--safe-bottom));
       }
-      .screen { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+      .screen { padding-bottom: calc(90px + var(--safe-bottom)); }
 
       /* Tap targets — make sure everything stays >= 44px tall on touch */
       button, [role="button"] { touch-action: manipulation; }
@@ -1504,11 +1510,13 @@
       min-height: 100dvh;
       border-radius: 0;
       overflow: visible;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
+      padding-top: var(--safe-top);
     }
     /* Hide the fake iOS status bar — real device shows the real one */
     .app-shell .status-bar { display: none; }
+    /* phone-inner owns the top inset; cancel the mobile @media rule that
+       adds it again to .screens (would double-pad the notch on iPhone). */
+    .app-shell .screens { padding-top: 0; }
 
     /* Hide screens not in BETA scope (markup retained for V1+) */
     section[data-screen="today-camera"],

@@ -101,5 +101,35 @@ export default async function handler(req, res) {
     });
   }
 
+  // Cascade: delete any outfits this user owns that reference the deleted
+  // garment. garment_ids is a uuid[] column; .contains() maps to the @> operator.
+  // Non-fatal — garment deletion succeeds regardless of whether cascade works.
+  try {
+    const { data: orphaned, error: fetchOrphanErr } = await supabase
+      .from("outfits")
+      .select("id")
+      .eq("user_id", userId)
+      .contains("garment_ids", [garment_id]);
+
+    if (fetchOrphanErr) {
+      console.warn("delete-garment: orphan outfits fetch warning:", fetchOrphanErr.message);
+    } else if (orphaned && orphaned.length > 0) {
+      const orphanIds = orphaned.map((o) => o.id);
+      const { error: deleteOrphanErr } = await supabase
+        .from("outfits")
+        .delete()
+        .in("id", orphanIds)
+        .eq("user_id", userId);
+
+      if (deleteOrphanErr) {
+        console.warn("delete-garment: orphan outfits delete warning:", deleteOrphanErr.message);
+      } else {
+        console.log(`delete-garment: cascaded ${orphanIds.length} orphan outfits for user ${userId}`);
+      }
+    }
+  } catch (e) {
+    console.warn("delete-garment: orphan cascade exception:", e?.message || e);
+  }
+
   return res.status(200).json({ success: true });
 }

@@ -10,7 +10,7 @@
   <title>Vesti — Interactive Prototype</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     /* Enforce HTML hidden attribute even when author CSS sets display:flex/grid */
     [hidden] { display: none !important; }
@@ -39,7 +39,9 @@
       --hairline: rgba(42, 42, 36, 0.10);
       --hairline-soft: rgba(42, 42, 36, 0.06);
 
+      --accent-warm: #a78b6a;
       --font-display: Georgia, "Times New Roman", serif;
+      --font-serif: "Crimson Pro", Georgia, "Times New Roman", serif;
       --font-body: Calibri, "Helvetica Neue", Arial, sans-serif;
       --font-ar-display: "Amiri", Georgia, serif;
       --font-ar-body: "Noto Sans Arabic", "Dubai", Tahoma, sans-serif;
@@ -696,16 +698,57 @@
       inset: 12%;
       object-fit: contain;
     }
+    /* Gradient scrim — dark bottom-to-top, behind the name label */
+    .closet-tile::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(to top, rgba(26,22,18,0.62) 0%, transparent 52%);
+      pointer-events: none;
+    }
+    /* Garment name overlay — white uppercase, bottom-left, above scrim */
     .closet-tile .tile-brand {
-      position: relative;
-      font-size: 9px;
+      position: absolute;
+      bottom: 10px; left: 10px;
+      z-index: 2;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--ink-mid);
-      background: rgba(250,247,242,0.85);
-      padding: 2px 6px;
-      border-radius: 6px;
-      display: none; /* BETA: labels hidden */
+      color: #fff;
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    /* ==========================================================
+       Closet screen — in-screen brand header
+       ========================================================== */
+    .closet-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 24px 4px;
+    }
+    .closet-logo-mark {
+      width: 32px; height: 32px;
+      border: 1.5px solid var(--ink);
+      border-radius: 999px;
+      display: grid; place-items: center;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 400;
+      color: var(--ink);
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .closet-wordmark {
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink);
     }
     .closet-tile.sage { background: var(--card-sage); }
     .closet-tile.moss { background: var(--moss); }
@@ -2271,6 +2314,10 @@
 
           <!-- =========================================== CLOSET -->
           <section class="screen" data-screen="closet">
+            <div class="closet-topbar">
+              <div class="closet-logo-mark">V</div>
+              <span class="closet-wordmark">VESTI</span>
+            </div>
             <div class="screen-header">
               <p class="h-eyebrow" data-i18n="closet_eyebrow">Week 3 · unlocked</p>
               <h2 class="h1" data-i18n="closet_h">Your closet.</h2>
@@ -2281,7 +2328,7 @@
               <!-- BETA: Items count populated by loadCloset(); Gaps populated by loadGaps().
                    "Worn · 30d" stays static until the worn-items log ships post-V1. -->
               <div class="stat"><div class="stat-num" id="stat-items">—</div><div class="stat-label" data-i18n="stat_items">Items</div></div>
-              <div class="stat" style="display:none"><div class="stat-num">—</div><div class="stat-label" data-i18n="stat_worn">Worn · 30d</div></div>
+              <div class="stat"><div class="stat-num">—</div><div class="stat-label" data-i18n="stat_worn">Worn · 30d</div></div>
               <div class="stat" data-goto="closet-gaps"><div class="stat-num" id="stat-gaps">—</div><div class="stat-label" data-i18n="stat_gaps">Gaps found</div></div>
             </div>
 
@@ -3984,8 +4031,12 @@
       const thumb = g.thumb_url
         ? `<img class="tile-thumb" src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy">`
         : `<svg viewBox="0 0 50 60"><use href="#${sym}"/></svg>`;
+      const rawLabel = tileLabel(g);
+      const label = rawLabel
+        ? `<span class="tile-brand">${rawLabel.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}</span>`
+        : "";
       return `<div class="closet-tile ${accent}" data-goto="item-detail" data-garment-id="${g.id}">`
-        + thumb + `</div>`;
+        + thumb + label + `</div>`;
     }
 
     function renderClosetGrid(grid, more, garments) {

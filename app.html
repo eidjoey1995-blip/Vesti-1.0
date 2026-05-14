@@ -925,36 +925,72 @@
     .occasion-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 14px;
       padding: 4px 0 20px;
     }
     .occasion {
-      aspect-ratio: 1.4;
+      min-height: 110px;
       border-radius: var(--radius-card);
       padding: 14px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      background: var(--card-cream);
-      border: 1px solid transparent;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      border: 1px solid var(--hairline-soft);
       transition: border-color 150ms ease;
     }
     .occasion:hover { border-color: var(--ink); }
-    .occasion.rose { background: var(--rose-lt); }
-    .occasion.sage { background: var(--card-sage); }
-    .occasion.moss { background: var(--moss); }
-    .occasion.cream { background: var(--card-cream); }
     .occasion-label {
-      font-family: var(--font-display);
-      font-size: 20px;
-      line-height: 1.15;
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--ink);
+      text-align: center;
+    }
+    .occasion-hint { display: none; }
+    .stylist-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 24px 12px;
+    }
+    .stylist-topbar-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
       color: var(--ink);
     }
-    .occasion-hint {
-      font-size: 11px;
+    .stylist-divider {
+      height: 1px;
+      background: var(--hairline-soft);
+      margin: 0 24px 20px;
+    }
+    .stylist-heading {
+      font-family: var(--font-serif);
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--ink);
+      padding: 0 24px;
+      margin: 0 0 6px;
+    }
+    .stylist-subhead {
+      font-size: 14px;
       color: var(--ink-mid);
+      padding: 0 24px;
+      margin: 0 0 20px;
       line-height: 1.4;
+    }
+    .stylist-empty-state {
+      text-align: center;
+      color: var(--ink-mid);
+      font-size: 13px;
+      padding: 16px 24px 8px;
+      margin: 0;
     }
 
     .lookbook {
@@ -2496,41 +2532,42 @@
 
           <!-- =========================================== STYLIST -->
           <section class="screen" data-screen="stylist">
-            <div class="screen-header">
-              <p class="h-eyebrow" data-i18n="stylist_eyebrow">AI Stylist</p>
-              <h2 class="h1" data-i18n="stylist_h">For Eid, for the boardroom, for Tuesday.</h2>
-              <p class="lead" data-i18n="stylist_lead">Pick an occasion. We'll blend your closet with three feed picks.</p>
+            <div class="stylist-topbar">
+              <span class="stylist-topbar-title" data-i18n="stylist_eyebrow">Stylist</span>
             </div>
+            <div class="stylist-divider"></div>
+            <h2 class="stylist-heading" data-i18n="stylist_h">What's the occasion?</h2>
+            <p class="stylist-subhead" data-i18n="stylist_lead">Pick an occasion and we'll suggest an outfit from your closet.</p>
 
             <div style="padding:0 24px;">
               <div class="occasion-grid">
-                <div class="occasion sage" data-goto="stylist-result">
+                <div class="occasion" data-goto="stylist-result">
                   <div class="occasion-label" data-i18n="occ_work_t">Boardroom</div>
                   <div class="occasion-hint" data-i18n="occ_work_h">Client-facing. Full polish required.</div>
                 </div>
-                <div class="occasion cream" data-goto="stylist-result">
+                <div class="occasion" data-goto="stylist-result">
                   <div class="occasion-label" data-i18n="occ_eid_t">Workday</div>
                   <div class="occasion-hint" data-i18n="occ_eid_h">Smart casual. Office but not stiff.</div>
                 </div>
-                <div class="occasion moss" data-goto="stylist-result">
+                <div class="occasion" data-goto="stylist-result">
                   <div class="occasion-label" data-i18n="occ_brunch_t">Weekend brunch</div>
                   <div class="occasion-hint" data-i18n="occ_brunch_h">Mar Mikhael or the coast. Relaxed.</div>
                 </div>
-                <div class="occasion rose" data-goto="stylist-result">
+                <div class="occasion" data-goto="stylist-result">
                   <div class="occasion-label" data-i18n="occ_travel_t">Dinner out</div>
                   <div class="occasion-hint" data-i18n="occ_travel_h">Restaurant, soft light, no tie.</div>
                 </div>
-                <div class="occasion sage" data-goto="stylist-result">
+                <div class="occasion" data-goto="stylist-result">
                   <div class="occasion-label" data-i18n="occ_wkend_t">Wedding / Black tie</div>
                   <div class="occasion-hint" data-i18n="occ_wkend_h">Indoor ballroom. Navy suit territory.</div>
                 </div>
-                <div class="occasion cream" data-goto="stylist-result">
+                <div class="occasion" data-goto="stylist-result">
                   <div class="occasion-label" data-i18n="occ_wedding_t">Casual errands</div>
                   <div class="occasion-hint" data-i18n="occ_wedding_h">Off-duty. Clean sneakers, no effort.</div>
                 </div>
               </div>
             </div>
-            <p style="text-align:center; color:var(--ink-mid); font-size:13px; padding:16px 24px 8px; margin:0;" data-i18n="stylist_pick_prompt">Tap a card to pull your look.</p>
+            <p class="stylist-empty-state" data-i18n="stylist_pick_prompt">Choose an occasion above to see your outfit.</p>
           </section>
 
           <!-- =========================================== STYLIST RESULT (lookbook) -->
@@ -3235,7 +3272,7 @@
         subcat_suit_jackets: "Suit jackets", subcat_suit_trousers: "Suit trousers", subcat_other_suits: "Other suits",
         subcat_sneakers: "Sneakers", subcat_loafers: "Loafers", subcat_boots: "Boots", subcat_dress_shoes: "Dress shoes", subcat_heels: "Heels", subcat_sandals: "Sandals", subcat_other_shoes: "Other shoes",
         subcat_belts: "Belts", subcat_ties: "Ties", subcat_scarves: "Scarves", subcat_bags: "Bags", subcat_other_acc: "Other accessories",
-        stylist_pick_prompt: "Tap a card to pull your look.",
+        stylist_pick_prompt: "Choose an occasion above to see your outfit.",
         // Closet gaps
         gaps_step: "Closet analysis",
         gaps_eyebrow: "4 gaps · ranked by impact",
@@ -3277,9 +3314,9 @@
         label_name: "Name", label_category: "Category", label_subcategory: "Sub-category", label_color: "Color",
         edit_save_error: "Couldn't save changes. Try again.",
         // Stylist
-        stylist_eyebrow: "AI Stylist",
-        stylist_h: "For the meeting, for iftar, for Tuesday.",
-        stylist_lead: "Pick an occasion. We'll blend your closet with three feed picks.",
+        stylist_eyebrow: "Stylist",
+        stylist_h: "What's the occasion?",
+        stylist_lead: "Pick an occasion and we'll suggest an outfit from your closet.",
         stylist_loading: "Pulling a look together…",
         stylist_no_result: "No look found for this occasion — try a different one.",
         occ_work_t: "Boardroom", occ_work_h: "Client-facing. Full polish required.",

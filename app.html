@@ -1106,26 +1106,82 @@
     /* ==========================================================
        Profile + receipt setup
        ========================================================== */
-    .profile-hero {
-      margin: 6px 24px 20px;
-      padding: 20px;
-      background: var(--card-sage);
+    .profile-identity {
+      padding: 28px 24px 20px;
+    }
+    .profile-identity .profile-name {
+      font-family: var(--font-serif);
+      font-size: 38px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--ink);
+      margin: 0 0 4px;
+    }
+    .profile-identity .profile-email {
+      font-size: 14px;
+      color: var(--ink-mid);
+      line-height: 1.3;
+    }
+    .profile-stats {
+      display: flex;
+      gap: 14px;
+      padding: 0 24px 24px;
+    }
+    .profile-stats .stat {
+      background: #fff;
+      border: 1px solid var(--hairline-soft);
+    }
+    .profile-stats .stat-num {
+      font-family: var(--font-serif);
+      font-size: 28px;
+    }
+    .settings-card {
+      margin: 0 24px 24px;
+      background: #fff;
       border-radius: var(--radius-card);
+      border: 1px solid var(--hairline-soft);
+      overflow: hidden;
+    }
+    .settings-row {
       display: flex;
       align-items: center;
-      gap: 14px;
+      justify-content: space-between;
+      padding: 16px 20px;
+      cursor: pointer;
     }
-    .avatar {
-      width: 54px; height: 54px;
-      border-radius: 50%;
-      background: var(--sage);
-      color: var(--cream);
-      display: grid; place-items: center;
-      font-family: var(--font-display);
-      font-size: 20px;
+    .settings-row + .settings-row {
+      border-top: 1px solid var(--hairline-soft);
     }
-    .profile-name { font-family: var(--font-display); font-size: 20px; color: var(--ink); }
-    .profile-city { font-size: 12px; color: var(--ink-mid); }
+    .settings-row-label {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .settings-row-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ink-mid);
+      font-size: 14px;
+    }
+    .settings-chev {
+      color: var(--ink-mid);
+      font-size: 16px;
+    }
+    html[dir="rtl"] .settings-chev { display: inline-block; transform: scaleX(-1); }
+    .profile-sign-out {
+      text-align: center;
+      padding: 8px 24px 16px;
+    }
+    #btn-sign-out {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 15px;
+      font-family: var(--font-body);
+      color: var(--ink-mid);
+      cursor: pointer;
+    }
 
     .section-label {
       font-family: var(--font-display);
@@ -2727,95 +2783,42 @@
 
           <!-- =========================================== PROFILE -->
           <section class="screen" data-screen="profile">
-            <div class="screen-header">
-              <p class="h-eyebrow" data-i18n="profile_eyebrow">Closet-first</p>
-              <h2 class="h1" data-i18n="profile_h">How your closet builds.</h2>
+            <div class="profile-identity">
+              <div class="profile-name" data-i18n="profile_name">Leila</div>
+              <div class="profile-email" data-i18n="profile_city">email@example.com</div>
             </div>
 
-            <div class="profile-hero">
-              <div class="avatar" data-i18n="profile_avatar">L</div>
-              <div>
-                <div class="profile-name" data-i18n="profile_name">Leila</div>
-                <div class="profile-city" data-i18n="profile_city">Dubai · 32 items · Pro trial</div>
-              </div>
-            </div>
-
-            <!-- BETA: stats populated dynamically from /api/get-stats. -->
-            <div class="closet-stats" style="padding:12px 24px 4px">
+            <!-- stats populated dynamically from /api/get-stats -->
+            <div class="profile-stats">
               <div class="stat"><div class="stat-num" id="pstat-garments">—</div><div class="stat-label" data-i18n="pstat_garments">Garments</div></div>
               <div class="stat"><div class="stat-num" id="pstat-outfits">—</div><div class="stat-label" data-i18n="pstat_outfits">Outfits</div></div>
               <div class="stat"><div class="stat-num" id="pstat-days">—</div><div class="stat-label" data-i18n="pstat_days">Days active</div></div>
             </div>
 
-            <div class="section-label" data-i18n="section_three_ways">Four ways in. Zero friction.</div>
-
-            <div class="onboarding-path" data-goto="receipt-setup">
-              <div class="path-num">1</div>
-              <div>
-                <h4 class="path-title" data-i18n="path1_t">Forward a receipt.</h4>
-                <p class="path-copy" data-i18n="path1_c">Send any purchase email to your unique Vesti inbox. 6 months of shopping = 40+ items in minutes.</p>
-                <span class="path-time" data-i18n="path1_time">2 min · most-used</span>
+            <div class="settings-card">
+              <div class="settings-row" data-goto="language-picker">
+                <span class="settings-row-label" data-i18n="set_language">Language</span>
+                <div class="settings-row-right">
+                  <span id="lang-indicator">English</span>
+                  <span class="settings-chev">›</span>
+                </div>
+              </div>
+              <div class="settings-row">
+                <span class="settings-row-label" data-i18n="set_notifications">Notifications</span>
+                <span class="settings-chev">›</span>
+              </div>
+              <div class="settings-row">
+                <span class="settings-row-label" data-i18n="set_help">Help &amp; feedback</span>
+                <span class="settings-chev">›</span>
+              </div>
+              <div class="settings-row">
+                <span class="settings-row-label" data-i18n="set_about">About Vesti</span>
+                <span class="settings-chev">›</span>
               </div>
             </div>
 
-            <div class="onboarding-path" data-goto="scan-receipt">
-              <div class="path-num">2</div>
-              <div>
-                <h4 class="path-title" data-i18n="path2_t">Scan a paper receipt.</h4>
-                <p class="path-copy" data-i18n="path2_c">For boutiques that don't send email — local tailors, atelier buys. Point the camera, we read the receipt.</p>
-                <span class="path-time" data-i18n="path2_time">10 sec · boutique-friendly</span>
-              </div>
-            </div>
-
-            <div class="onboarding-path" data-goto="bulk-photo">
-              <div class="path-num">3</div>
-              <div>
-                <h4 class="path-title" data-i18n="path3_t">Bulk photo.</h4>
-                <p class="path-copy" data-i18n="path3_c">Lay clothes out. One photo. We segment and tag every piece. For gifts, older pieces, shoes.</p>
-                <span class="path-time" data-i18n="path3_time">Optional</span>
-              </div>
-            </div>
-
-            <div class="onboarding-path">
-              <div class="path-num">4</div>
-              <div>
-                <h4 class="path-title" data-i18n="path4_t">Retailer sync.</h4>
-                <p class="path-copy" data-i18n="path4_c">Once partnerships are signed, new purchases will land in your closet automatically — no forwarding needed.</p>
-                <span class="path-time" data-i18n="path4_time">Roadmap · in partnership talks</span>
-              </div>
-            </div>
-
-            <div class="section-label" data-i18n="section_settings">Settings</div>
-            <div class="list-row" data-goto="language-picker">
-              <div>
-                <div class="list-row-label" data-i18n="set_language">Language</div>
-                <div class="list-row-meta" id="lang-indicator">English</div>
-              </div>
-              <span class="chev">›</span>
-            </div>
-            <div class="list-row">
-              <div>
-                <div class="list-row-label" data-i18n="set_modesty">Modesty preferences</div>
-                <div class="list-row-meta" data-i18n="set_modesty_v">Show modest options first</div>
-              </div>
-              <span class="chev">›</span>
-            </div>
-            <div class="list-row" data-goto="currency-picker" style="display:none">
-              <div>
-                <div class="list-row-label" data-i18n="set_currency">Currency</div>
-                <div class="list-row-meta" id="currency-indicator">AED · United Arab Emirates Dirham</div>
-              </div>
-              <span class="chev">›</span>
-            </div>
-            <div class="list-row">
-              <div>
-                <div class="list-row-label" data-i18n="set_privacy">Privacy</div>
-                <div class="list-row-meta" data-i18n="set_privacy_v">Receipts stripped of PII before storage</div>
-              </div>
-              <span class="chev">›</span>
-            </div>
-            <div style="padding:8px 24px 0;">
-              <button id="btn-sign-out" class="btn btn-ghost btn-block" data-i18n="sign_out" style="color:var(--ink-mid);">Sign out</button>
+            <div class="profile-sign-out">
+              <button id="btn-sign-out" data-i18n="sign_out">Sign out</button>
             </div>
             <div style="height:24px"></div>
           </section>
@@ -3375,6 +3378,9 @@
         path4_time: "Roadmap · in partnership talks",
         section_settings: "Settings",
         set_language: "Language",
+        set_notifications: "Notifications",
+        set_help: "Help & feedback",
+        set_about: "About Vesti",
         lang_english: "English",
         lang_arabic: "العربية",
         set_modesty: "Modesty preferences",
@@ -3615,6 +3621,9 @@
         path3_time: "قريباً · ٣ شركاء مفعّلين",
         section_settings: "الإعدادات",
         set_language: "اللغة",
+        set_notifications: "الإشعارات",
+        set_help: "المساعدة والملاحظات",
+        set_about: "عن فيستي",
         lang_english: "English",
         lang_arabic: "العربية",
         set_modesty: "تفضيلات الاحتشام",

@@ -866,13 +866,13 @@
     .item-hero .source-badge {
       position: absolute;
       top: 14px; right: 14px;
-      background: rgba(250,247,242,0.95);
+      background: #fff;
       padding: 5px 10px;
       border-radius: var(--radius-chip);
       font-size: 10px;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--ink-mid);
+      color: var(--ink);
     }
     .kv {
       display: flex;
@@ -883,6 +883,37 @@
     }
     .kv-k { color: var(--ink-mid); }
     .kv-v { color: var(--ink); font-weight: 500; }
+    .detail-topbar .icon-btn:first-child { border: none; background: transparent; box-shadow: none; }
+    .detail-topbar-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-warm);
+    }
+    .detail-cat-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-warm);
+      margin: 0 0 10px;
+    }
+    .detail-description {
+      font-family: var(--font-serif);
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--ink);
+      margin: 0 0 16px;
+    }
+    .detail-attrs {
+      background: #fff;
+      border-radius: var(--radius-card);
+      border: 1px solid var(--hairline-soft);
+      padding: 0 16px;
+      margin-bottom: 16px;
+    }
+    .detail-attrs .kv { padding: 14px 0; }
+    .detail-attrs .kv:last-child { border-bottom: none; }
 
     /* Edit garment form */
     .edit-field { margin-bottom: 16px; }
@@ -2493,11 +2524,13 @@
 
           <!-- =========================================== ITEM DETAIL -->
           <section class="screen" data-screen="item-detail">
-            <div class="screen-top">
+            <div class="screen-top detail-topbar">
               <button class="icon-btn" data-goto="closet" aria-label="Back">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
-              <div class="micro" data-i18n="item_source">Auto-extracted · photo</div>
+              <!-- item_source is static i18n ("Auto-extracted · photo") — no dynamic source binding exists yet -->
+              <div class="detail-topbar-eyebrow" data-i18n="item_source">Auto-extracted · photo</div>
+              <!-- edit feature not shipped — button is inert (no handler, no data-goto) -->
               <button class="icon-btn" id="item-edit-btn" aria-label="Edit">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
@@ -2505,26 +2538,24 @@
 
             <div class="item-hero">
               <!-- hero visual (img or svg) injected by populateItemDetail -->
-              <!-- BETA: source badge says "From your photo" — auto-segmented, no merchant attribution. -->
               <div class="source-badge" data-i18n="source_receipt">From your photo</div>
             </div>
 
             <div style="padding:0 24px;">
-              <!-- VIEW MODE: category eyebrow + name + KV rows -->
+              <!-- VIEW MODE: category eyebrow + description + attributes card -->
               <div id="item-view-meta">
-                <!-- BETA: brand spans empty (data-persona-brand="item" cleared in m persona overrides). -->
-                <p class="h-eyebrow"><span data-i18n="category_shirt">Linen shirt</span></p>
-                <h2 class="h2" data-i18n="item_name">Oversized tencel shirt, cream.</h2>
-                <div style="margin-top:10px">
-                  <!-- BETA: brand KV row hidden — receipt-forwarding (which populates it) is post-V1. -->
-                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_brand">Brand</span><span class="kv-v" data-persona-brand="item"></span></div>
+                <p class="detail-cat-eyebrow"><span data-i18n="category_shirt">Linen shirt</span></p>
+                <h2 class="detail-description" data-i18n="item_name">Oversized tencel shirt, cream.</h2>
+                <div class="detail-attrs">
                   <div class="kv"><span class="kv-k" data-i18n="kv_color">Colour</span><span class="kv-v" data-i18n="val_cream">Cream</span></div>
-                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_size">Size</span><span class="kv-v">M</span></div>
-                  <!-- BETA: paid + bought + worn rows hidden — populated by receipt-forwarding (post-V1). -->
-                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_price">Paid</span><span class="kv-v" data-price-aed="395">AED 395</span></div>
-                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_bought">Bought</span><span class="kv-v" data-i18n="val_date">14 Feb</span></div>
-                  <div class="kv" hidden><span class="kv-k" data-i18n="kv_worn">Worn</span><span class="kv-v" data-i18n="val_worn">6 times · AED 65/wear</span></div>
+                  <div class="kv"><span class="kv-k" data-i18n="kv_category">Category</span><span class="kv-v" data-kv="category">—</span></div>
                 </div>
+                <!-- hidden KV rows populated by receipt-forwarding (post-V1) -->
+                <div class="kv" hidden><span class="kv-k" data-i18n="kv_brand">Brand</span><span class="kv-v" data-persona-brand="item"></span></div>
+                <div class="kv" hidden><span class="kv-k" data-i18n="kv_size">Size</span><span class="kv-v">M</span></div>
+                <div class="kv" hidden><span class="kv-k" data-i18n="kv_price">Paid</span><span class="kv-v" data-price-aed="395">AED 395</span></div>
+                <div class="kv" hidden><span class="kv-k" data-i18n="kv_bought">Bought</span><span class="kv-v" data-i18n="val_date">14 Feb</span></div>
+                <div class="kv" hidden><span class="kv-k" data-i18n="kv_worn">Worn</span><span class="kv-v" data-i18n="val_worn">6 times · AED 65/wear</span></div>
               </div>
 
               <!-- EDIT MODE: inline form, hidden by default -->
@@ -3304,7 +3335,7 @@
         source_receipt: "From your photo",
         category_shirt: "Linen shirt",
         item_name: "Oversized tencel shirt, cream.",
-        kv_brand: "Brand", kv_color: "Colour", kv_size: "Size", kv_price: "Paid",
+        kv_brand: "Brand", kv_color: "Colour", kv_category: "Category", kv_size: "Size", kv_price: "Paid",
         kv_bought: "Bought", kv_worn: "Worn",
         val_cream: "Cream", val_date: "14 Feb", val_worn: "6 times · AED 65/wear",
         item_pairs: "Pairs well with",
@@ -3555,7 +3586,7 @@
         source_receipt: "من صورتك",
         category_shirt: "قميص كتّان",
         item_name: "قميص تنسل واسع، كريمي.",
-        kv_brand: "الماركة", kv_color: "اللون", kv_size: "المقاس", kv_price: "السعر المدفوع",
+        kv_brand: "الماركة", kv_color: "اللون", kv_category: "الفئة", kv_size: "المقاس", kv_price: "السعر المدفوع",
         kv_bought: "تاريخ الشراء", kv_worn: "الارتداء",
         val_cream: "كريمي", val_date: "١٤ فبراير", val_worn: "٦ مرات · 65 درهم/مرة",
         item_pairs: "يُنسّق جيداً مع",
@@ -4433,6 +4464,9 @@
       // Colour KV
       const colour = root.querySelector('[data-i18n="val_cream"]');
       if (colour && g.color) colour.textContent = g.color.replace(/^./, c => c.toUpperCase());
+      // Category KV
+      const catKv = root.querySelector('[data-kv="category"]');
+      if (catKv) catKv.textContent = (g.subcategory || g.category || "—").replace(/^./, c => c.toUpperCase());
       // Source badge stays on its EN/AR i18n string ("From your photo").
       loadPairs(g);
     }

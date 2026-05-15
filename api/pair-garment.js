@@ -176,7 +176,8 @@ export default async function handler(req, res) {
     // Drop same-category-group suggestions regardless of what the LLM returned.
     if (catGroup(candidateById.get(gid)?.category) === targetGroup) continue;
     const reason = typeof p.reason === "string" ? p.reason.trim() : "";
-    pairs.push({ garment_id: gid, reason });
+    const pairedG = candidateById.get(gid);
+    pairs.push({ garment_id: gid, reason, category: pairedG?.category || "", subcategory: pairedG?.subcategory || "" });
     if (pairs.length >= 3) break;
   }
 

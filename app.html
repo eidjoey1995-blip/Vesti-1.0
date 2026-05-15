@@ -934,6 +934,13 @@
       height: auto;
       aspect-ratio: 1;
       border-radius: 14px;
+      background: var(--card-cream);
+    }
+    #item-pairs-list .piece-thumb img {
+      width: 80%;
+      height: 80%;
+      object-fit: contain;
+      border-radius: 0;
     }
     #item-pairs-list .piece-label {
       font-size: 12px;
@@ -4724,7 +4731,8 @@
           const thumb = g.thumb_url
             ? `<img src="${(g.thumb_url || "").replace(/"/g, "&quot;")}" alt="" loading="lazy">`
             : `<svg viewBox="0 0 50 60"><use href="#${sym}"/></svg>`;
-          const label = String(p.reason || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+          const rawLabel = tileLabel({ category: p.category, subcategory: p.subcategory });
+          const label = rawLabel.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
           return `<div class="piece" data-pair-garment-id="${p.garment_id}" style="cursor:pointer;">`
             + `<div class="piece-thumb">${thumb}</div>`
             + `<div class="piece-label">${label}</div>`

@@ -190,7 +190,7 @@ export default async function handler(req, res) {
   const { userId, email, err } = await resolveUser(req, supabase);
   if (err) return res.status(401).json({ error: err });
 
-  const { source_photo_url, garments, city, photoBase64 } = req.body || {};
+  let { source_photo_url, garments, city, photoBase64 } = req.body || {};
 
   if (!Array.isArray(garments) || garments.length === 0) {
     return res.status(400).json({ error: { code: "missing_garments", message: "garments must be a non-empty array" } });
@@ -236,6 +236,23 @@ export default async function handler(req, res) {
       }
       console.warn("image normalization failed, using raw buffer:", normErr.message);
       normalizedImgBuf = rawBuf;
+    }
+  }
+
+  // If the frontend didn't supply a source URL (onboarding sends null), upload the
+  // normalized buffer once so grounded_sam has a public URL to fetch.
+  if (normalizedImgBuf && !source_photo_url && process.env.REPLICATE_API_TOKEN) {
+    const srcName = `tmp_${userId}_source_${Date.now()}.jpg`;
+    const { error: srcUpErr } = await supabase.storage
+      .from("garment-thumbs")
+      .upload(srcName, normalizedImgBuf, { contentType: "image/jpeg", upsert: false });
+    if (!srcUpErr) {
+      const { data: { publicUrl: srcUrl } } = supabase.storage
+        .from("garment-thumbs")
+        .getPublicUrl(srcName);
+      source_photo_url = srcUrl;
+    } else {
+      console.warn("source photo upload failed, grounded_sam will be skipped:", srcUpErr.message);
     }
   }
 

@@ -914,6 +914,33 @@
     }
     .detail-attrs .kv { padding: 14px 0; }
     .detail-attrs .kv:last-child { border-bottom: none; }
+    .pairs-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-warm);
+      margin: 0 0 12px;
+    }
+    #item-pairs-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      overflow-x: visible;
+      margin-top: 0;
+    }
+    #item-pairs-list .piece { width: auto; }
+    #item-pairs-list .piece-thumb {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1;
+      border-radius: 14px;
+    }
+    #item-pairs-list .piece-label {
+      font-size: 12px;
+      color: var(--ink);
+      margin-top: 8px;
+      line-height: 1.4;
+    }
 
     /* Edit garment form */
     .edit-field { margin-bottom: 16px; }
@@ -2588,12 +2615,12 @@
                 <p id="item-edit-error" style="display:none; color:var(--err); font-size:12px; margin:2px 0 8px;" data-i18n="edit_save_error">Couldn't save changes. Try again.</p>
               </div>
 
-              <!-- BETA: "Pairs well with" section — populated dynamically from /api/pair-garment. -->
+              <!-- "Pairs well with" section — populated dynamically from /api/pair-garment. -->
               <div id="item-pairs-section" style="display:none">
                 <div class="spacer"></div>
-                <p class="h-eyebrow" data-i18n="item_pairs">Pairs well with</p>
+                <p class="pairs-eyebrow" data-i18n="item_pairs">Pairs well with</p>
                 <p id="item-pairs-loading" style="font-size:12px;color:var(--ink-mid);margin:6px 0 0;" data-i18n="item_pairs_loading">Finding pairs…</p>
-                <div id="item-pairs-list" class="outfit-pieces" style="margin-top:8px;display:none;"></div>
+                <div id="item-pairs-list" class="outfit-pieces" style="display:none;"></div>
               </div>
 
               <!-- VIEW MODE ACTIONS -->

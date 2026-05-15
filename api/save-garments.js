@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
+import { maskGarment } from "../lib/grounded-sam.js";
 
 // =========================================================
 // POST /api/save-garments
@@ -238,109 +239,148 @@ export default async function handler(req, res) {
     }
   }
 
-  // Crop garment thumbnails from the normalized flatlay.
+  // Per-garment thumbnail generation: grounded_sam primary, bbox-crop+RMBG fallback.
   const thumbUrls = {};
+
+  // Pre-compute image dimensions once — used only by the legacy crop fallback.
+  let _legacyImgW = 1, _legacyImgH = 1, _legacyImgReady = false;
   if (normalizedImgBuf) {
     try {
-      const imgBuf = normalizedImgBuf;
-      const meta = await sharp(imgBuf).metadata();
-      const imgW = meta.width || 1;
-      const imgH = meta.height || 1;
-
-      for (let i = 0; i < garments.length; i++) {
-        const g = garments[i];
-        const bbox = g.raw_response?.bbox || g.bbox;
-        if (!bbox || typeof bbox.x !== "number") continue;
-        try {
-          const rawLeft   = Math.round(bbox.x * imgW);
-          const rawTop    = Math.round(bbox.y * imgH);
-          const rawWidth  = Math.round(bbox.w * imgW);
-          const rawHeight = Math.round(bbox.h * imgH);
-          // Inset each side by 4% of the bbox dimension to shed loose background pixels.
-          const insetX = Math.floor(rawWidth  * 0.04);
-          const insetY = Math.floor(rawHeight * 0.04);
-          const left   = Math.max(0, rawLeft + insetX);
-          const top    = Math.max(0, rawTop  + insetY);
-          const width  = Math.max(1, Math.min(imgW - left, rawWidth  - 2 * insetX));
-          const height = Math.max(1, Math.min(imgH - top,  rawHeight - 2 * insetY));
-          const cropJpeg = await sharp(imgBuf)
-            .extract({ left, top, width, height })
-            .resize(400, 400, { fit: "cover", position: "centre" })
-            .jpeg({ quality: 82 })
-            .toBuffer();
-
-          const ts = Date.now();
-          let finalBuf = cropJpeg;
-          let fileName = `${userId}/${ts}_${i}.jpg`;
-          let contentType = "image/jpeg";
-
-          // Background removal: upload crop to a temp public URL, run 851-labs/background-remover,
-          // fall back to JPEG on any failure so garment save is never blocked.
-          if (process.env.REPLICATE_API_TOKEN) {
-            const tempName = `${userId}/tmp_${ts}_${i}.jpg`;
-            const { error: tempErr } = await supabase.storage
-              .from("garment-thumbs")
-              .upload(tempName, cropJpeg, { contentType: "image/jpeg", upsert: false });
-
-            if (!tempErr) {
-              const { data: { publicUrl: tempUrl } } = supabase.storage
-                .from("garment-thumbs")
-                .getPublicUrl(tempName);
-
-              const pngBuf = await removeBackground(tempUrl);
-              if (pngBuf) {
-                // Guard against RMBG erasing low-contrast subjects (e.g. grey suede on
-                // a neutral background): inspect the alpha channel before accepting the PNG.
-                let subjectFraction = 1; // default: assume good if inspection fails
-                try {
-                  const { data: alphaRaw, info } = await sharp(pngBuf)
-                    .extractChannel("alpha")
-                    .raw()
-                    .toBuffer({ resolveWithObject: true });
-                  const totalPixels = info.width * info.height;
-                  let visiblePixels = 0;
-                  for (let p = 0; p < alphaRaw.length; p++) {
-                    if (alphaRaw[p] > 20) visiblePixels++;
-                  }
-                  subjectFraction = totalPixels > 0 ? visiblePixels / totalPixels : 0;
-                } catch (alphaErr) {
-                  console.warn(`rmbg alpha check failed for garment ${i}:`, alphaErr.message);
-                }
-
-                if (subjectFraction >= 0.05) {
-                  finalBuf = pngBuf;
-                  fileName = `${userId}/${ts}_${i}.png`;
-                  contentType = "image/png";
-                } else {
-                  console.warn(`rmbg erased subject for garment ${i} (visible pixels: ${(subjectFraction * 100).toFixed(1)}%), falling back to JPEG`);
-                }
-              } else {
-                console.warn(`rmbg skipped for garment ${i}, falling back to JPEG`);
-              }
-
-              // Clean up temp — fire-and-forget, never blocks the response.
-              supabase.storage.from("garment-thumbs").remove([tempName]).catch(() => {});
-            }
-          }
-
-          const { error: upErr } = await supabase.storage
-            .from("garment-thumbs")
-            .upload(fileName, finalBuf, { contentType, upsert: false });
-
-          if (!upErr) {
-            const { data: { publicUrl } } = supabase.storage
-              .from("garment-thumbs")
-              .getPublicUrl(fileName);
-            thumbUrls[i] = publicUrl;
-          }
-        } catch (cropErr) {
-          console.warn(`thumb crop failed for garment ${i}:`, cropErr.message);
-        }
-      }
+      const meta = await sharp(normalizedImgBuf).metadata();
+      _legacyImgW = meta.width || 1;
+      _legacyImgH = meta.height || 1;
+      _legacyImgReady = true;
     } catch (imgErr) {
       console.warn("thumb generation skipped:", imgErr.message);
     }
   }
+
+  const thumbResults = await Promise.all(garments.map(async (g, i) => {
+    const label = g.subcategory || g.category || "clothing";
+    const ts = Date.now();
+
+    // PRIMARY: grounded_sam on the full source photo URL.
+    if (source_photo_url && process.env.REPLICATE_API_TOKEN) {
+      try {
+        const pngBuf = await maskGarment(source_photo_url, label);
+        if (pngBuf) {
+          const fileName = `${userId}/${ts}_${i}.png`;
+          const { error: upErr } = await supabase.storage
+            .from("garment-thumbs")
+            .upload(fileName, pngBuf, { contentType: "image/png", upsert: false });
+          if (!upErr) {
+            const { data: { publicUrl } } = supabase.storage
+              .from("garment-thumbs")
+              .getPublicUrl(fileName);
+            console.log(`path=grounded-sam label=${label}`);
+            return [i, publicUrl];
+          }
+        }
+      } catch (gsamErr) {
+        console.log(`grounded-sam: unexpected error for "${label}":`, gsamErr.message);
+      }
+    }
+
+    // FALLBACK: existing bbox crop + RMBG path — logic unchanged.
+    if (!normalizedImgBuf || !_legacyImgReady) return [i, null];
+
+    const bbox = g.raw_response?.bbox || g.bbox;
+    if (!bbox || typeof bbox.x !== "number") return [i, null];
+
+    try {
+      const imgW = _legacyImgW;
+      const imgH = _legacyImgH;
+      const rawLeft   = Math.round(bbox.x * imgW);
+      const rawTop    = Math.round(bbox.y * imgH);
+      const rawWidth  = Math.round(bbox.w * imgW);
+      const rawHeight = Math.round(bbox.h * imgH);
+      // Inset each side by 4% of the bbox dimension to shed loose background pixels.
+      const insetX = Math.floor(rawWidth  * 0.04);
+      const insetY = Math.floor(rawHeight * 0.04);
+      const left   = Math.max(0, rawLeft + insetX);
+      const top    = Math.max(0, rawTop  + insetY);
+      const width  = Math.max(1, Math.min(imgW - left, rawWidth  - 2 * insetX));
+      const height = Math.max(1, Math.min(imgH - top,  rawHeight - 2 * insetY));
+      const cropJpeg = await sharp(normalizedImgBuf)
+        .extract({ left, top, width, height })
+        .resize(400, 400, { fit: "cover", position: "centre" })
+        .jpeg({ quality: 82 })
+        .toBuffer();
+
+      let finalBuf = cropJpeg;
+      let fileName = `${userId}/${ts}_${i}.jpg`;
+      let contentType = "image/jpeg";
+      let legacyPath = "legacy-jpeg";
+
+      // Background removal: upload crop to a temp public URL, run 851-labs/background-remover,
+      // fall back to JPEG on any failure so garment save is never blocked.
+      if (process.env.REPLICATE_API_TOKEN) {
+        const tempName = `${userId}/tmp_${ts}_${i}.jpg`;
+        const { error: tempErr } = await supabase.storage
+          .from("garment-thumbs")
+          .upload(tempName, cropJpeg, { contentType: "image/jpeg", upsert: false });
+
+        if (!tempErr) {
+          const { data: { publicUrl: tempUrl } } = supabase.storage
+            .from("garment-thumbs")
+            .getPublicUrl(tempName);
+
+          const pngBuf = await removeBackground(tempUrl);
+          if (pngBuf) {
+            // Guard against RMBG erasing low-contrast subjects (e.g. grey suede on
+            // a neutral background): inspect the alpha channel before accepting the PNG.
+            let subjectFraction = 1; // default: assume good if inspection fails
+            try {
+              const { data: alphaRaw, info } = await sharp(pngBuf)
+                .extractChannel("alpha")
+                .raw()
+                .toBuffer({ resolveWithObject: true });
+              const totalPixels = info.width * info.height;
+              let visiblePixels = 0;
+              for (let p = 0; p < alphaRaw.length; p++) {
+                if (alphaRaw[p] > 20) visiblePixels++;
+              }
+              subjectFraction = totalPixels > 0 ? visiblePixels / totalPixels : 0;
+            } catch (alphaErr) {
+              console.warn(`rmbg alpha check failed for garment ${i}:`, alphaErr.message);
+            }
+
+            if (subjectFraction >= 0.05) {
+              finalBuf = pngBuf;
+              fileName = `${userId}/${ts}_${i}.png`;
+              contentType = "image/png";
+              legacyPath = "legacy-rmbg";
+            } else {
+              console.warn(`rmbg erased subject for garment ${i} (visible pixels: ${(subjectFraction * 100).toFixed(1)}%), falling back to JPEG`);
+            }
+          } else {
+            console.warn(`rmbg skipped for garment ${i}, falling back to JPEG`);
+          }
+
+          // Clean up temp — fire-and-forget, never blocks the response.
+          supabase.storage.from("garment-thumbs").remove([tempName]).catch(() => {});
+        }
+      }
+
+      console.log(`path=${legacyPath} label=${label}`);
+      const { error: upErr } = await supabase.storage
+        .from("garment-thumbs")
+        .upload(fileName, finalBuf, { contentType, upsert: false });
+
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("garment-thumbs")
+          .getPublicUrl(fileName);
+        return [i, publicUrl];
+      }
+      return [i, null];
+    } catch (cropErr) {
+      console.warn(`thumb crop failed for garment ${i}:`, cropErr.message);
+      return [i, null];
+    }
+  }));
+
+  thumbResults.forEach(([i, url]) => { if (url) thumbUrls[i] = url; });
 
   const rows = garments.map((g, i) => ({
     user_id: userId,

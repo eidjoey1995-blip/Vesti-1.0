@@ -289,9 +289,31 @@ export default async function handler(req, res) {
 
               const pngBuf = await removeBackground(tempUrl);
               if (pngBuf) {
-                finalBuf = pngBuf;
-                fileName = `${userId}/${ts}_${i}.png`;
-                contentType = "image/png";
+                // Guard against RMBG erasing low-contrast subjects (e.g. grey suede on
+                // a neutral background): inspect the alpha channel before accepting the PNG.
+                let subjectFraction = 1; // default: assume good if inspection fails
+                try {
+                  const { data: alphaRaw, info } = await sharp(pngBuf)
+                    .extractChannel("alpha")
+                    .raw()
+                    .toBuffer({ resolveWithObject: true });
+                  const totalPixels = info.width * info.height;
+                  let visiblePixels = 0;
+                  for (let p = 0; p < alphaRaw.length; p++) {
+                    if (alphaRaw[p] > 20) visiblePixels++;
+                  }
+                  subjectFraction = totalPixels > 0 ? visiblePixels / totalPixels : 0;
+                } catch (alphaErr) {
+                  console.warn(`rmbg alpha check failed for garment ${i}:`, alphaErr.message);
+                }
+
+                if (subjectFraction >= 0.05) {
+                  finalBuf = pngBuf;
+                  fileName = `${userId}/${ts}_${i}.png`;
+                  contentType = "image/png";
+                } else {
+                  console.warn(`rmbg erased subject for garment ${i} (visible pixels: ${(subjectFraction * 100).toFixed(1)}%), falling back to JPEG`);
+                }
               } else {
                 console.warn(`rmbg skipped for garment ${i}, falling back to JPEG`);
               }

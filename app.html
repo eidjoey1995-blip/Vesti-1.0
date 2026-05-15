@@ -4394,8 +4394,7 @@
       const pills = items.map((it) => {
         const g = closetById.get(String(it.garment_id));
         const cat = (g && (g.subcategory || g.category)) || (it.role ? it.role.replace(/^./, c => c.toUpperCase()) : "Garment");
-        const color = g && g.color ? `${g.color} ` : "";
-        const label = (color + cat).replace(/^./, c => c.toUpperCase());
+        const label = cat.replace(/^./, c => c.toUpperCase());
         const labelEsc = label.replace(/&/g, "&amp;").replace(/</g, "&lt;");
         return `<span class="look-pill own">${labelEsc}</span>`;
       }).join("");

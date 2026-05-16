@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { maskGarment } from "../lib/grounded-sam.js";
 
+export const maxDuration = 60;
+
 // =========================================================
 // POST /api/save-garments
 // Auth: Authorization: Bearer <supabase_access_token>

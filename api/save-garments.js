@@ -272,7 +272,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const BODY_PARTS = "head, face, hair, skin, arms, hands, watch, jewelry, background";
+  const BODY_PARTS = "head, face, hair";
 
   const thumbResults = await Promise.all(garments.map(async (g, i) => {
     const label = g.subcategory || g.category || "clothing";

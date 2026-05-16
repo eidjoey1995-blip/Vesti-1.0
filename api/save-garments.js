@@ -272,14 +272,22 @@ export default async function handler(req, res) {
     }
   }
 
+  const BODY_PARTS = "head, face, hair, skin, arms, hands, watch, jewelry, background";
+
   const thumbResults = await Promise.all(garments.map(async (g, i) => {
     const label = g.subcategory || g.category || "clothing";
     const ts = Date.now();
 
     // PRIMARY: grounded_sam on the full source photo URL.
     if (source_photo_url && process.env.REPLICATE_API_TOKEN) {
+      const otherLabels = garments
+        .filter((_, j) => j !== i)
+        .map(o => o.subcategory || o.category)
+        .filter(Boolean)
+        .join(", ");
+      const negativePrompt = otherLabels ? `${otherLabels}, ${BODY_PARTS}` : BODY_PARTS;
       try {
-        const pngBuf = await maskGarment(source_photo_url, label);
+        const pngBuf = await maskGarment(source_photo_url, label, negativePrompt);
         if (pngBuf) {
           const fileName = `${userId}/${ts}_${i}.png`;
           const { error: upErr } = await supabase.storage

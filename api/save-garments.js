@@ -282,7 +282,7 @@ export default async function handler(req, res) {
     if (source_photo_url && process.env.REPLICATE_API_TOKEN) {
       const negativePrompt = "";
       try {
-        const pngBuf = await maskGarment(source_photo_url, label, negativePrompt, g.category);
+        const pngBuf = await maskGarment(source_photo_url, label, negativePrompt, g.subcategory || g.category || "");
         if (pngBuf) {
           const fileName = `${userId}/${ts}_${i}.png`;
           const { error: upErr } = await supabase.storage

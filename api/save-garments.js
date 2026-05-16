@@ -280,12 +280,7 @@ export default async function handler(req, res) {
 
     // PRIMARY: grounded_sam on the full source photo URL.
     if (source_photo_url && process.env.REPLICATE_API_TOKEN) {
-      const otherLabels = garments
-        .filter((_, j) => j !== i)
-        .map(o => o.subcategory || o.category)
-        .filter(Boolean)
-        .join(", ");
-      const negativePrompt = otherLabels ? `${otherLabels}, ${BODY_PARTS}` : BODY_PARTS;
+      const negativePrompt = "";
       try {
         const pngBuf = await maskGarment(source_photo_url, label, negativePrompt);
         if (pngBuf) {

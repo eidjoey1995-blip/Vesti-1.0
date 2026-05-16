@@ -2,7 +2,7 @@ import { maskGarment } from "../lib/grounded-sam.js";
 
 export const maxDuration = 30;
 
-const WARMER_URL = "https://tmgftqnekispazjfnqxw.supabase.co/storage/v1/object/public/garment-thumbs/_warmer.jpg";
+const WARMER_URL = "https://tmgftqnekispazjfnqxw.supabase.co/storage/v1/object/public/garment-thumbs/_warmer.jpeg";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {

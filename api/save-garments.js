@@ -172,10 +172,7 @@ async function resolveUser(req, supabase) {
 }
 
 async function handleReprocess(req, res, supabase) {
-  const { email, garment_id } = req.body || {};
-  if (!email || typeof email !== "string") {
-    return res.status(400).json({ ok: false, error: "email is required" });
-  }
+  const { garment_id } = req.body || {};
   if (!garment_id || typeof garment_id !== "string") {
     return res.status(400).json({ ok: false, error: "garment_id is required" });
   }
@@ -183,30 +180,27 @@ async function handleReprocess(req, res, supabase) {
     return res.status(500).json({ ok: false, error: "REPLICATE_API_TOKEN not set" });
   }
 
-  // Step 1: Resolve user_id from email via admin API.
-  let userId;
-  try {
-    const { data: { users }, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 1000, page: 1 });
-    if (listErr) return res.status(500).json({ ok: false, error: listErr.message });
-    const user = users.find(u => u.email === email);
-    if (!user) return res.status(404).json({ ok: false, error: `No user found for email: ${email}` });
-    userId = user.id;
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  // Step 1: Resolve user_id from the Bearer JWT — same pattern as get-closet.
+  const auth = (req.headers.authorization || "").trim();
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) return res.status(401).json({ ok: false, error: "Authorization header required" });
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+  if (authErr || !user) {
+    return res.status(401).json({ ok: false, error: authErr?.message || "Invalid token" });
   }
+  const userId = user.id;
 
-  // Step 2: Fetch garment row and verify ownership.
+  // Step 2: Fetch garment row — filter by both id and user_id so the query
+  // itself enforces ownership (same pattern as get-closet's WHERE user_id = userId).
   const { data: garment, error: fetchErr } = await supabase
     .from("garments")
     .select("id, user_id, source_photo_url, category, subcategory, thumb_url")
     .eq("id", garment_id)
+    .eq("user_id", userId)
     .single();
 
   if (fetchErr || !garment) {
     return res.status(404).json({ ok: false, error: fetchErr?.message || "Garment not found" });
-  }
-  if (garment.user_id !== userId) {
-    return res.status(403).json({ ok: false, error: "Garment does not belong to this user" });
   }
   if (!garment.source_photo_url) {
     return res.status(400).json({ ok: false, error: "Garment has no source_photo_url — cannot reprocess" });

@@ -171,6 +171,97 @@ async function resolveUser(req, supabase) {
   return { userId: user.id, email: user.email, err: null };
 }
 
+async function handleReprocess(req, res, supabase) {
+  const { email, garment_id } = req.body || {};
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ ok: false, error: "email is required" });
+  }
+  if (!garment_id || typeof garment_id !== "string") {
+    return res.status(400).json({ ok: false, error: "garment_id is required" });
+  }
+  if (!process.env.REPLICATE_API_TOKEN) {
+    return res.status(500).json({ ok: false, error: "REPLICATE_API_TOKEN not set" });
+  }
+
+  // Step 1: Resolve user_id from email via admin API.
+  let userId;
+  try {
+    const { data: { users }, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 1000, page: 1 });
+    if (listErr) return res.status(500).json({ ok: false, error: listErr.message });
+    const user = users.find(u => u.email === email);
+    if (!user) return res.status(404).json({ ok: false, error: `No user found for email: ${email}` });
+    userId = user.id;
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+
+  // Step 2: Fetch garment row and verify ownership.
+  const { data: garment, error: fetchErr } = await supabase
+    .from("garments")
+    .select("id, user_id, source_photo_url, category, subcategory, thumb_url")
+    .eq("id", garment_id)
+    .single();
+
+  if (fetchErr || !garment) {
+    return res.status(404).json({ ok: false, error: fetchErr?.message || "Garment not found" });
+  }
+  if (garment.user_id !== userId) {
+    return res.status(403).json({ ok: false, error: "Garment does not belong to this user" });
+  }
+  if (!garment.source_photo_url) {
+    return res.status(400).json({ ok: false, error: "Garment has no source_photo_url — cannot reprocess" });
+  }
+
+  // Steps 3 + 4: Re-run maskGarment with the same prompt pattern as save-garments.
+  const label = garment.subcategory || garment.category || "clothing";
+  const category = garment.subcategory || garment.category || "";
+
+  let pngBuf;
+  try {
+    pngBuf = await maskGarment(garment.source_photo_url, label, "", category);
+  } catch (err) {
+    return res.status(502).json({ ok: false, error: err?.message || String(err) });
+  }
+  if (!pngBuf) {
+    return res.status(502).json({ ok: false, error: "maskGarment returned null — SAM failed or mask was empty" });
+  }
+
+  // Step 5: Overwrite existing storage path when possible, otherwise mint a new one.
+  let fileName;
+  if (garment.thumb_url) {
+    const marker = "/garment-thumbs/";
+    const idx = garment.thumb_url.indexOf(marker);
+    if (idx !== -1) fileName = garment.thumb_url.slice(idx + marker.length);
+  }
+  if (!fileName) {
+    fileName = `${userId}/${Date.now()}_reprocess.png`;
+  }
+
+  const { error: upErr } = await supabase.storage
+    .from("garment-thumbs")
+    .upload(fileName, pngBuf, { contentType: "image/png", upsert: true });
+
+  if (upErr) {
+    return res.status(500).json({ ok: false, error: `Storage upload failed: ${upErr.message}` });
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("garment-thumbs")
+    .getPublicUrl(fileName);
+
+  // Step 6: Write new thumb_url back to the garments row.
+  const { error: updateErr } = await supabase
+    .from("garments")
+    .update({ thumb_url: publicUrl })
+    .eq("id", garment_id);
+
+  if (updateErr) {
+    return res.status(500).json({ ok: false, error: `DB update failed: ${updateErr.message}` });
+  }
+
+  return res.status(200).json({ ok: true, thumb_url: publicUrl });
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -188,6 +279,8 @@ export default async function handler(req, res) {
   const supabase = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
+
+  if ((req.body || {}).mode === "reprocess") return handleReprocess(req, res, supabase);
 
   const { userId, email, err } = await resolveUser(req, supabase);
   if (err) return res.status(401).json({ error: err });

@@ -2,7 +2,6 @@
   "functions": {
     "api/segment-garments.js": { "maxDuration": 60 },
     "api/save-garments.js": { "maxDuration": 60 },
-    "api/warm-sam.js": { "maxDuration": 60 },
-    "api/reprocess-garment.js": { "maxDuration": 60 }
+    "api/warm-sam.js": { "maxDuration": 60 }
   }
 }

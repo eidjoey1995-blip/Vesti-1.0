@@ -695,8 +695,10 @@
     }
     .closet-tile .tile-thumb {
       position: absolute;
-      inset: 12%;
-      object-fit: contain;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     /* Gradient scrim — dark bottom-to-top, behind the name label */
     .closet-tile::after {
@@ -4387,6 +4389,9 @@
 
       const thumbs = items.map((it) => {
         const g = closetById.get(String(it.garment_id));
+        if (g && g.thumb_url) {
+          return `<img src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy" style="width:38px;height:50px;flex:0 0 auto;object-fit:contain;border-radius:6px;">`;
+        }
         const sym = symbolFor(g && g.category);
         return `<svg viewBox="0 0 50 60" style="width:38px;height:50px;flex:0 0 auto;"><use href="#${sym}"/></svg>`;
       }).join("");

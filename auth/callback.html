@@ -70,13 +70,26 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
-    const SUPABASE_URL      = "https://tmgftqnekispazjfnqxw.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtZ2Z0cW5la2lzcGF6amZucXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjIxNDAsImV4cCI6MjA5MzAzODE0MH0.0s6rlrt3i8ojwEyn-jkPntFrVgQzXK1NQKloNapBk4g";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const statusMsg = document.getElementById("status-msg");
 
     (async () => {
+      const cfg = await fetch("/api/auth-config").then(r => r.ok ? r.json() : null).catch(() => null);
+      if (!cfg || !cfg.url || !cfg.anonKey) {
+        statusMsg.textContent = "Link expired or invalid — sending you back to sign in.";
+        setTimeout(() => { window.location.replace("/login.html?error=invalid_link"); }, 1500);
+        return;
+      }
+
+      const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage,
+          storageKey: "vesti-auth"
+        }
+      });
+
       const { data: { session }, error } = await sb.auth.getSession();
 
       if (!session || error) {

@@ -157,112 +157,123 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
-    const SUPABASE_URL     = "https://tmgftqnekispazjfnqxw.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtZ2Z0cW5la2lzcGF6amZucXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjIxNDAsImV4cCI6MjA5MzAzODE0MH0.0s6rlrt3i8ojwEyn-jkPntFrVgQzXK1NQKloNapBk4g";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    (async () => {
+      const cfg = await fetch("/api/auth-config").then(r => r.ok ? r.json() : null).catch(() => null);
+      if (!cfg || !cfg.url || !cfg.anonKey) return;
 
-    const emailInput  = document.getElementById("email-input");
-    const submitBtn   = document.getElementById("submit-btn");
-    const errorMsg    = document.getElementById("error-msg");
-    const formSection = document.getElementById("form-section");
-    const sentSection = document.getElementById("sent-section");
-    const sentMsg     = document.getElementById("sent-msg");
-    const resendBtn   = document.getElementById("resend-btn");
-
-    // Same pattern used throughout the app
-    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    let lastEmail   = "";
-    let resendTimer = null;
-
-    function esc(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    function clearError() {
-      emailInput.classList.remove("has-error");
-      errorMsg.hidden = true;
-      errorMsg.textContent = "";
-    }
-
-    function showError(msg) {
-      emailInput.classList.add("has-error");
-      errorMsg.textContent = msg;
-      errorMsg.hidden = false;
-    }
-
-    function showSent(email) {
-      formSection.hidden = true;
-      sentSection.hidden = false;
-      sentMsg.innerHTML =
-        "Check your email — we sent a magic link to <strong>" + esc(email) + "</strong>. " +
-        "Click the link to sign in. (You can close this tab.)";
-      resendBtn.disabled = true;
-      clearTimeout(resendTimer);
-      resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
-    }
-
-    async function sendOtp(email) {
-      const { error } = await sb.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: window.location.origin + "/auth/callback.html" }
+      const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage,
+          storageKey: "vesti-auth"
+        }
       });
-      return error;
-    }
 
-    // ---- Submit handler ----
-    submitBtn.addEventListener("click", async () => {
-      const email = emailInput.value.trim().toLowerCase();
-      clearError();
+      const emailInput  = document.getElementById("email-input");
+      const submitBtn   = document.getElementById("submit-btn");
+      const errorMsg    = document.getElementById("error-msg");
+      const formSection = document.getElementById("form-section");
+      const sentSection = document.getElementById("sent-section");
+      const sentMsg     = document.getElementById("sent-msg");
+      const resendBtn   = document.getElementById("resend-btn");
 
-      if (!EMAIL_RE.test(email)) {
-        showError("Please enter a valid email address.");
-        return;
+      // Same pattern used throughout the app
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      let lastEmail   = "";
+      let resendTimer = null;
+
+      function esc(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       }
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Sending…";
-
-      const error = await sendOtp(email);
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Send magic link";
-
-      if (error) {
-        showError(error.message);
-      } else {
-        lastEmail = email;
-        showSent(email);
-      }
-    });
-
-    // Enter key triggers submit
-    emailInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") submitBtn.click();
-    });
-
-    // ---- Resend handler ----
-    resendBtn.addEventListener("click", async () => {
-      resendBtn.disabled = true;
-      clearTimeout(resendTimer);
-
-      // Remove any previous resend error
-      const prev = sentSection.querySelector(".resend-error");
-      if (prev) prev.remove();
-
-      const error = await sendOtp(lastEmail);
-
-      if (error) {
-        const el = document.createElement("p");
-        el.className = "resend-error";
-        el.style.cssText = "color:var(--err);font-size:13px;margin:8px 0 0;";
-        el.textContent = error.message;
-        resendBtn.insertAdjacentElement("beforebegin", el);
+      function clearError() {
+        emailInput.classList.remove("has-error");
+        errorMsg.hidden = true;
+        errorMsg.textContent = "";
       }
 
-      // Always reset the 30-second cooldown regardless of outcome
-      resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
-    });
+      function showError(msg) {
+        emailInput.classList.add("has-error");
+        errorMsg.textContent = msg;
+        errorMsg.hidden = false;
+      }
+
+      function showSent(email) {
+        formSection.hidden = true;
+        sentSection.hidden = false;
+        sentMsg.innerHTML =
+          "Check your email — we sent a magic link to <strong>" + esc(email) + "</strong>. " +
+          "Click the link to sign in. (You can close this tab.)";
+        resendBtn.disabled = true;
+        clearTimeout(resendTimer);
+        resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
+      }
+
+      async function sendOtp(email) {
+        const { error } = await sb.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: window.location.origin + "/auth/callback.html" }
+        });
+        return error;
+      }
+
+      // ---- Submit handler ----
+      submitBtn.addEventListener("click", async () => {
+        const email = emailInput.value.trim().toLowerCase();
+        clearError();
+
+        if (!EMAIL_RE.test(email)) {
+          showError("Please enter a valid email address.");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Sending…";
+
+        const error = await sendOtp(email);
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Send magic link";
+
+        if (error) {
+          showError(error.message);
+        } else {
+          lastEmail = email;
+          showSent(email);
+        }
+      });
+
+      // Enter key triggers submit
+      emailInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") submitBtn.click();
+      });
+
+      // ---- Resend handler ----
+      resendBtn.addEventListener("click", async () => {
+        resendBtn.disabled = true;
+        clearTimeout(resendTimer);
+
+        // Remove any previous resend error
+        const prev = sentSection.querySelector(".resend-error");
+        if (prev) prev.remove();
+
+        const error = await sendOtp(lastEmail);
+
+        if (error) {
+          const el = document.createElement("p");
+          el.className = "resend-error";
+          el.style.cssText = "color:var(--err);font-size:13px;margin:8px 0 0;";
+          el.textContent = error.message;
+          resendBtn.insertAdjacentElement("beforebegin", el);
+        }
+
+        // Always reset the 30-second cooldown regardless of outcome
+        resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
+      });
+    })();
   </script>
 </body>
 </html>

@@ -3920,8 +3920,6 @@
 
     // -------- BETA closet wiring --------
     // Fetches /api/get-closet?email=<onboarding email>, renders tiles, wires item-detail.
-    // localStorage key matches what onboarding.html sets after a successful save.
-    // When auth lands (#61/#62), swap localStorage email for a Supabase session token.
     const CLOSET_ENDPOINT = "/api/get-closet";
     const closetState = { loaded: false, loading: false, garments: [] };
 

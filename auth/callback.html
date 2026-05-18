@@ -88,7 +88,9 @@
       }
 
       try {
-        const res  = await fetch(`/api/get-closet?email=${encodeURIComponent(session.user.email)}&limit=1`);
+        const res  = await fetch(`/api/get-closet?limit=1`, {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        });
         const data = await res.json();
         if (data.garments && data.garments.length > 0) {
           window.location.replace("/app.html");

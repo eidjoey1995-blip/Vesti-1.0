@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Vesti" />
+  <meta name="theme-color" content="#fafaf7" />
+  <title>Vesti — Sign in</title>
+  <style>
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+
+      --bg: #fafaf7;
+      --ink: #14110f;
+      --muted: #6f6a64;
+      --line: #e5e1da;
+      --accent: #14110f;
+      --accent-soft: #efeae0;
+      --ok: #2f7a4a;
+      --warn: #b25c1c;
+      --err: #a43030;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100dvh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 440px;
+      padding: calc(32px + var(--safe-top)) calc(20px + var(--safe-right)) calc(32px + var(--safe-bottom)) calc(20px + var(--safe-left));
+    }
+    .wordmark {
+      font-family: "SF Pro Display", -apple-system, serif;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink);
+      margin-bottom: 32px;
+    }
+    h1 {
+      font-family: "SF Pro Display", -apple-system, serif;
+      font-weight: 600;
+      font-size: 26px;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 15px;
+      margin: 0 0 20px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    label.field {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    input[type="email"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 16px;
+      background: #fff;
+      color: var(--ink);
+      -webkit-appearance: none;
+    }
+    input[type="email"]:focus {
+      outline: none;
+      border-color: var(--ink);
+    }
+    input[type="email"].has-error {
+      border-color: var(--err);
+    }
+    .error-text {
+      color: var(--err);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 18px;
+      margin-top: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.ghost { background: transparent; color: var(--ink); }
+    .sent-text {
+      font-size: 15px;
+      color: var(--ink);
+      line-height: 1.55;
+      margin: 0 0 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="wordmark">Vesti</div>
+    <h1>Sign in to Vesti</h1>
+    <p class="sub">We'll email you a magic link — no password.</p>
+
+    <div class="card">
+
+      <div id="form-section">
+        <label class="field" for="email-input">Email</label>
+        <input type="email" id="email-input"
+               placeholder="you@example.com"
+               autocomplete="email"
+               inputmode="email"
+               spellcheck="false" />
+        <div id="error-msg" class="error-text" hidden></div>
+        <button class="btn" id="submit-btn">Send magic link</button>
+      </div>
+
+      <div id="sent-section" hidden>
+        <p class="sent-text" id="sent-msg"></p>
+        <button class="btn ghost" id="resend-btn" disabled>Resend</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    const SUPABASE_URL     = "https://tmgftqnekispazjfnqxw.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtZ2Z0cW5la2lzcGF6amZucXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjIxNDAsImV4cCI6MjA5MzAzODE0MH0.0s6rlrt3i8ojwEyn-jkPntFrVgQzXK1NQKloNapBk4g";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const emailInput  = document.getElementById("email-input");
+    const submitBtn   = document.getElementById("submit-btn");
+    const errorMsg    = document.getElementById("error-msg");
+    const formSection = document.getElementById("form-section");
+    const sentSection = document.getElementById("sent-section");
+    const sentMsg     = document.getElementById("sent-msg");
+    const resendBtn   = document.getElementById("resend-btn");
+
+    // Same pattern used throughout the app
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    let lastEmail   = "";
+    let resendTimer = null;
+
+    function esc(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function clearError() {
+      emailInput.classList.remove("has-error");
+      errorMsg.hidden = true;
+      errorMsg.textContent = "";
+    }
+
+    function showError(msg) {
+      emailInput.classList.add("has-error");
+      errorMsg.textContent = msg;
+      errorMsg.hidden = false;
+    }
+
+    function showSent(email) {
+      formSection.hidden = true;
+      sentSection.hidden = false;
+      sentMsg.innerHTML =
+        "Check your email — we sent a magic link to <strong>" + esc(email) + "</strong>. " +
+        "Click the link to sign in. (You can close this tab.)";
+      resendBtn.disabled = true;
+      clearTimeout(resendTimer);
+      resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
+    }
+
+    async function sendOtp(email) {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin + "/auth/callback.html" }
+      });
+      return error;
+    }
+
+    // ---- Submit handler ----
+    submitBtn.addEventListener("click", async () => {
+      const email = emailInput.value.trim().toLowerCase();
+      clearError();
+
+      if (!EMAIL_RE.test(email)) {
+        showError("Please enter a valid email address.");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending…";
+
+      const error = await sendOtp(email);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Send magic link";
+
+      if (error) {
+        showError(error.message);
+      } else {
+        lastEmail = email;
+        showSent(email);
+      }
+    });
+
+    // Enter key triggers submit
+    emailInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitBtn.click();
+    });
+
+    // ---- Resend handler ----
+    resendBtn.addEventListener("click", async () => {
+      resendBtn.disabled = true;
+      clearTimeout(resendTimer);
+
+      // Remove any previous resend error
+      const prev = sentSection.querySelector(".resend-error");
+      if (prev) prev.remove();
+
+      const error = await sendOtp(lastEmail);
+
+      if (error) {
+        const el = document.createElement("p");
+        el.className = "resend-error";
+        el.style.cssText = "color:var(--err);font-size:13px;margin:8px 0 0;";
+        el.textContent = error.message;
+        resendBtn.insertAdjacentElement("beforebegin", el);
+      }
+
+      // Always reset the 30-second cooldown regardless of outcome
+      resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
+    });
+  </script>
+</body>
+</html>

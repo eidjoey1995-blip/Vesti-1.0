@@ -159,7 +159,7 @@
   <script>
     const SUPABASE_URL     = "https://tmgftqnekispazjfnqxw.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtZ2Z0cW5la2lzcGF6amZucXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjIxNDAsImV4cCI6MjA5MzAzODE0MH0.0s6rlrt3i8ojwEyn-jkPntFrVgQzXK1NQKloNapBk4g";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const emailInput  = document.getElementById("email-input");
     const submitBtn   = document.getElementById("submit-btn");
@@ -203,7 +203,7 @@
     }
 
     async function sendOtp(email) {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await sb.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: window.location.origin + "/auth/callback.html" }
       });

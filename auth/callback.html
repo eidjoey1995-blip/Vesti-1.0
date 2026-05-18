@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Vesti" />
+  <meta name="theme-color" content="#fafaf7" />
+  <title>Vesti — Signing in</title>
+  <style>
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+
+      --bg: #fafaf7;
+      --ink: #14110f;
+      --muted: #6f6a64;
+      --line: #e5e1da;
+      --err: #a43030;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100dvh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 440px;
+      padding: calc(32px + var(--safe-top)) calc(20px + var(--safe-right)) calc(32px + var(--safe-bottom)) calc(20px + var(--safe-left));
+    }
+    .wordmark {
+      font-family: "SF Pro Display", -apple-system, serif;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink);
+      margin-bottom: 32px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      font-size: 15px;
+      color: var(--ink);
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="wordmark">Vesti</div>
+    <div class="card">
+      <span id="status-msg">Signing you in…</span>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    const SUPABASE_URL      = "https://tmgftqnekispazjfnqxw.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtZ2Z0cW5la2lzcGF6amZucXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjIxNDAsImV4cCI6MjA5MzAzODE0MH0.0s6rlrt3i8ojwEyn-jkPntFrVgQzXK1NQKloNapBk4g";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const statusMsg = document.getElementById("status-msg");
+
+    (async () => {
+      const { data: { session }, error } = await sb.auth.getSession();
+
+      if (!session || error) {
+        statusMsg.textContent = "Link expired or invalid — sending you back to sign in.";
+        setTimeout(() => {
+          window.location.replace("/login.html?error=invalid_link");
+        }, 1500);
+        return;
+      }
+
+      try {
+        const res  = await fetch(`/api/get-closet?email=${encodeURIComponent(session.user.email)}&limit=1`);
+        const data = await res.json();
+        if (data.garments && data.garments.length > 0) {
+          window.location.replace("/app.html");
+        } else {
+          window.location.replace("/onboarding.html");
+        }
+      } catch (err) {
+        console.error("callback: closet fetch failed, defaulting to onboarding", err);
+        window.location.replace("/onboarding.html");
+      }
+    })();
+  </script>
+</body>
+</html>

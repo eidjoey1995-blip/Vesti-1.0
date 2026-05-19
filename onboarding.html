@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Vesti" />
-  <meta name="theme-color" content="#fafaf7" />
+  <meta name="theme-color" content="#FAF7F2" />
   <title>Vesti — Build your closet</title>
   <style>
     :root {
@@ -205,6 +205,16 @@
     }
     .toast.show { opacity: 1; }
   </style>
+  <!-- PWA / Install -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
 </head>
 <body>
   <div class="wrap">
@@ -679,5 +689,30 @@ $("#btnSave").addEventListener("click", async () => {
   showStep("step-done");
 });
 </script>
+  <script>
+  (function() {
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    var isStandalone = window.navigator.standalone === true ||
+                       window.matchMedia('(display-mode: standalone)').matches;
+    try {
+      var dismissed = localStorage.getItem('vesti-install-dismissed') === '1';
+      if (!isIOS || isStandalone || dismissed) return;
+    } catch (e) { return; }
+
+    var css = '#vesti-install-banner{position:fixed;bottom:0;left:0;right:0;background:#4A6B4E;color:#FAF7F2;padding:14px 16px;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.4;box-shadow:0 -2px 12px rgba(0,0,0,0.12);display:flex;align-items:center;gap:12px;padding-bottom:calc(14px + env(safe-area-inset-bottom))}#vesti-install-banner .vib-text{flex:1}#vesti-install-banner .vib-text strong{display:block;font-weight:600;margin-bottom:2px}#vesti-install-banner .vib-share{display:inline-block;padding:0 5px;background:#FAF7F2;color:#4A6B4E;border-radius:4px;font-weight:700}#vesti-install-banner .vib-close{background:transparent;border:0;color:#FAF7F2;font-size:24px;line-height:1;cursor:pointer;padding:0 4px}';
+    var style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+
+    var banner = document.createElement('div');
+    banner.id = 'vesti-install-banner';
+    banner.innerHTML = '<div class="vib-text"><strong>Install Vesti</strong><span>Tap <span class="vib-share">&#x2197;</span> then <em>Add to Home Screen</em></span></div><button class="vib-close" aria-label="Dismiss">&times;</button>';
+    document.body.appendChild(banner);
+    banner.querySelector('.vib-close').addEventListener('click', function() {
+      try { localStorage.setItem('vesti-install-dismissed', '1'); } catch(e){}
+      banner.remove();
+    });
+  })();
+  </script>
 </body>
 </html>

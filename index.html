@@ -322,6 +322,20 @@
       <!-- Sent state -->
       <div id="section-sent">
         <p class="auth-msg" data-i18n="sent_msg">Check your email — magic link sent.</p>
+        <input
+          id="code-input"
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="123456"
+          style="width:100%;padding:12px;font-size:20px;letter-spacing:6px;text-align:center;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-family:Georgia,serif;"
+        />
+        <button id="verify-btn" type="button" style="width:100%;padding:13px;background:#4A6B4E;color:#FAF7F2;border:none;border-radius:8px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;">
+          Verify code
+        </button>
+        <p id="code-error" style="font-size:13px;color:#a43030;margin:0;display:none;"></p>
         <button id="auth-resend" class="btn-ghost" type="button" data-i18n="resend">Resend</button>
       </div>
 
@@ -381,6 +395,8 @@
     };
 
     let _sb = null;
+    let lastEmail = "";
+    let resendCountdown = null;
 
     function el(id) { return document.getElementById(id); }
 
@@ -480,7 +496,14 @@
       if (error) {
         showErr(error.message || "Couldn't send link. Try again.");
       } else {
+        lastEmail = email;
+        const sentMsgEl = document.querySelector("#section-sent .auth-msg");
+        if (sentMsgEl) sentMsgEl.textContent = "Check your email — we sent a link and a 6-digit code to " + lastEmail + ".";
+        el("code-input").value = "";
+        el("code-error").style.display = "none";
+        startResendCooldown();
         showState("sent");
+        setTimeout(() => el("code-input").focus(), 100);
       }
     });
 
@@ -489,8 +512,94 @@
       if (e.key === "Enter") el("auth-btn").click();
     });
 
-    // Resend — go back to form.
-    el("auth-resend").addEventListener("click", () => showState("form"));
+    function startResendCooldown() {
+      const btn = el("auth-resend");
+      btn.disabled = true;
+      let secs = 30;
+      btn.textContent = "Resend (" + secs + "s)";
+      clearInterval(resendCountdown);
+      resendCountdown = setInterval(() => {
+        secs--;
+        if (secs <= 0) {
+          clearInterval(resendCountdown);
+          btn.disabled = false;
+          btn.textContent = "Resend";
+        } else {
+          btn.textContent = "Resend (" + secs + "s)";
+        }
+      }, 1000);
+    }
+
+    async function handleVerify() {
+      const code = (el("code-input").value || "").replace(/\D/g, "");
+      const codeErr = el("code-error");
+      if (!/^\d{6}$/.test(code)) {
+        codeErr.textContent = "Enter the 6-digit code from the email.";
+        codeErr.style.display = "block";
+        return;
+      }
+      if (!lastEmail) {
+        codeErr.textContent = "Please request a code first.";
+        codeErr.style.display = "block";
+        return;
+      }
+      const verifyBtn = el("verify-btn");
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = "Verifying…";
+      codeErr.style.display = "none";
+      try {
+        const { data, error } = await _sb.auth.verifyOtp({
+          email: lastEmail,
+          token: code,
+          type: "email"
+        });
+        if (error) throw error;
+        if (!data.session) throw new Error("No session returned.");
+        const token = data.session.access_token;
+        const res = await fetch("/api/get-closet?limit=1", {
+          headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.ok) {
+          const closet = await res.json();
+          const hasGarments = Array.isArray(closet && closet.garments) && closet.garments.length > 0;
+          window.location.href = hasGarments ? "/app.html" : "/onboarding.html";
+        } else {
+          window.location.href = "/onboarding.html";
+        }
+      } catch (err) {
+        codeErr.textContent = err.message || "That code didn't work. Try again or request a new one.";
+        codeErr.style.display = "block";
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = "Verify code";
+      }
+    }
+
+    el("verify-btn").addEventListener("click", handleVerify);
+    el("code-input").addEventListener("input", () => {
+      if (el("code-input").value.replace(/\D/g, "").length === 6) handleVerify();
+    });
+    el("code-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleVerify();
+    });
+
+    // Resend — re-send OTP and start 30s cooldown.
+    el("auth-resend").addEventListener("click", async () => {
+      if (!lastEmail) return;
+      const prevErr = document.querySelector("#section-sent .resend-error");
+      if (prevErr) prevErr.remove();
+      startResendCooldown();
+      const { error } = await _sb.auth.signInWithOtp({
+        email: lastEmail,
+        options: { emailRedirectTo: "https://vesti-1-0.vercel.app/" }
+      });
+      if (error) {
+        const errEl = document.createElement("p");
+        errEl.className = "resend-error";
+        errEl.style.cssText = "color:#a43030;font-size:13px;margin:0;";
+        errEl.textContent = error.message;
+        el("auth-resend").insertAdjacentElement("beforebegin", errEl);
+      }
+    });
   })();
   </script>
   <script>

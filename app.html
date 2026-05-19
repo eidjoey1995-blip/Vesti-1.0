@@ -4389,10 +4389,10 @@
       const thumbs = items.map((it) => {
         const g = closetById.get(String(it.garment_id));
         if (g && g.thumb_url) {
-          return `<img src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy" style="width:90px;height:130px;flex:0 0 auto;object-fit:contain;border-radius:8px;">`;
+          return `<img src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy" style="flex:1 1 0;min-width:0;max-width:140px;height:180px;object-fit:contain;border-radius:8px;">`;
         }
         const sym = symbolFor(g && g.category);
-        return `<svg viewBox="0 0 50 60" style="width:90px;height:130px;flex:0 0 auto;"><use href="#${sym}"/></svg>`;
+        return `<svg viewBox="0 0 50 60" style="flex:1 1 0;min-width:0;max-width:140px;height:180px;"><use href="#${sym}"/></svg>`;
       }).join("");
 
       const pills = items.map((it) => {
@@ -4411,7 +4411,7 @@
       lookbook.innerHTML = `
         <div class="look">
           <div class="look-img${colorMod ? " " + colorMod : ""}">
-            <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:nowrap;overflow:hidden;max-width:100%;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:0 16px;box-sizing:border-box;overflow:hidden;">
               ${thumbs}
             </div>
             <div class="look-num">Look ${lookNum}</div>

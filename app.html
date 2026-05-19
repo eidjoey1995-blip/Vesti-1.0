@@ -4384,14 +4384,15 @@
       }
 
       const closetById = new Map((closetState.garments || []).map(g => [String(g.id), g]));
+      const COLOR_MODS = ["", "moss", "rose"];
 
       const thumbs = items.map((it) => {
         const g = closetById.get(String(it.garment_id));
         if (g && g.thumb_url) {
-          return `<img src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy" style="width:38px;height:50px;flex:0 0 auto;object-fit:contain;border-radius:6px;">`;
+          return `<img src="${g.thumb_url.replace(/"/g, "&quot;")}" alt="" loading="lazy" style="width:90px;height:130px;flex:0 0 auto;object-fit:contain;border-radius:8px;">`;
         }
         const sym = symbolFor(g && g.category);
-        return `<svg viewBox="0 0 50 60" style="width:38px;height:50px;flex:0 0 auto;"><use href="#${sym}"/></svg>`;
+        return `<svg viewBox="0 0 50 60" style="width:90px;height:130px;flex:0 0 auto;"><use href="#${sym}"/></svg>`;
       }).join("");
 
       const pills = items.map((it) => {
@@ -4404,11 +4405,16 @@
 
       const occasionEsc = String(occasion).replace(/&/g, "&amp;").replace(/</g, "&lt;");
       const reasoningEsc = String(reasoning).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const colorMod = COLOR_MODS[0 % COLOR_MODS.length];
+      const lookNum = String(1).padStart(2, "0");
 
       lookbook.innerHTML = `
         <div class="look">
-          <div class="look-img" style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:22px 12px;">
-            ${thumbs}
+          <div class="look-img${colorMod ? " " + colorMod : ""}">
+            <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:nowrap;overflow:hidden;max-width:100%;">
+              ${thumbs}
+            </div>
+            <div class="look-num">Look ${lookNum}</div>
           </div>
           <div class="look-body">
             <h3 class="look-title">For ${occasionEsc}.</h3>
@@ -4416,7 +4422,6 @@
             <div class="look-items">${pills}</div>
           </div>
         </div>`;
-    }
 
     function renderStylistError(lookbook, step, note, msg, occasion) {
       if (step) step.textContent = "Couldn't load outfit";

@@ -142,7 +142,7 @@
   <div class="wrap">
     <div class="wordmark">Vesti</div>
     <h1>Sign in to Vesti</h1>
-    <p class="sub">We'll email you a magic link — no password.</p>
+    <p class="sub">We'll email you a magic link and a 6-digit code — no password.</p>
 
     <div class="card">
 
@@ -159,7 +159,26 @@
 
       <div id="sent-section" hidden>
         <p class="sent-text" id="sent-msg"></p>
-        <button class="btn ghost" id="resend-btn" disabled>Resend</button>
+        <div class="code-entry" style="margin-top:20px;">
+          <label for="code-input" style="display:block;font-size:13px;color:var(--ink);margin-bottom:8px;font-weight:500;">
+            Or enter the 6-digit code from the email:
+          </label>
+          <input
+            id="code-input"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            autocomplete="one-time-code"
+            maxlength="6"
+            placeholder="123456"
+            style="width:100%;padding:12px;font-size:18px;letter-spacing:6px;text-align:center;border:1px solid #d4cfc4;border-radius:8px;background:#fff;font-family:inherit;"
+          />
+          <button id="verify-btn" type="button" style="width:100%;margin-top:10px;padding:12px;background:var(--forest,#4A6B4E);color:var(--cream,#FAF7F2);border:0;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">
+            Verify code
+          </button>
+          <div id="code-error" style="color:var(--err,#c44);font-size:13px;margin-top:8px;display:none;"></div>
+        </div>
+        <button class="btn ghost" id="resend-btn" disabled style="margin-top:16px;">Resend</button>
       </div>
 
     </div>
@@ -188,6 +207,9 @@
       const sentSection = document.getElementById("sent-section");
       const sentMsg     = document.getElementById("sent-msg");
       const resendBtn   = document.getElementById("resend-btn");
+      const codeInput   = document.getElementById("code-input");
+      const verifyBtn   = document.getElementById("verify-btn");
+      const codeError   = document.getElementById("code-error");
 
       // Same pattern used throughout the app
       const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -215,11 +237,11 @@
         formSection.hidden = true;
         sentSection.hidden = false;
         sentMsg.innerHTML =
-          "Check your email — we sent a magic link to <strong>" + esc(email) + "</strong>. " +
-          "Click the link to sign in. (You can close this tab.)";
+          "Check your email — we sent a link and a 6-digit code to <strong>" + esc(email) + "</strong>.";
         resendBtn.disabled = true;
         clearTimeout(resendTimer);
         resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
+        setTimeout(() => codeInput.focus(), 100);
       }
 
       async function sendOtp(email) {
@@ -259,6 +281,62 @@
       // Enter key triggers submit
       emailInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") submitBtn.click();
+      });
+
+      // ---- Verify code handler ----
+      async function handleVerify() {
+        const code = (codeInput.value || "").trim();
+        if (!/^\d{6}$/.test(code)) {
+          codeError.textContent = "Enter the 6-digit code from the email.";
+          codeError.style.display = "block";
+          return;
+        }
+        if (!lastEmail) {
+          codeError.textContent = "Please request a code first.";
+          codeError.style.display = "block";
+          return;
+        }
+
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = "Verifying…";
+        codeError.style.display = "none";
+
+        try {
+          const { data, error } = await sb.auth.verifyOtp({
+            email: lastEmail,
+            token: code,
+            type: "email"
+          });
+          if (error) throw error;
+          if (!data.session) throw new Error("No session returned.");
+
+          const token = data.session.access_token;
+          const res = await fetch("/api/get-closet?limit=1", {
+            headers: { "Authorization": "Bearer " + token }
+          });
+          if (res.ok) {
+            const closet = await res.json();
+            const hasGarments = Array.isArray(closet && closet.garments) && closet.garments.length > 0;
+            window.location.href = hasGarments ? "/app.html" : "/onboarding.html";
+          } else {
+            window.location.href = "/onboarding.html";
+          }
+        } catch (err) {
+          codeError.textContent = err.message || "That code didn't work. Try again or request a new one.";
+          codeError.style.display = "block";
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = "Verify code";
+        }
+      }
+
+      verifyBtn.addEventListener("click", handleVerify);
+
+      codeInput.addEventListener("input", () => {
+        if (codeInput.value.replace(/\D/g, "").length === 6) handleVerify();
+      });
+
+      codeInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handleVerify();
       });
 
       // ---- Resend handler ----

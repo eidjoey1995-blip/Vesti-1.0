@@ -147,7 +147,13 @@ Easter Mass and family lunch (Catholic or Orthodox):
 Chinos or dark trousers, button-down shirt or fine knit polo, optional blazer for the Mass itself. Brown or dark dress shoes (loafers acceptable). Mass register one notch above Christmas dinner due to religious context. Lent-color rule (no bright colors during 40 days before Easter) is no longer widely observed — do NOT enforce by default.
 
 Hospital visit:
-Dark trouser (charcoal/grey/navy), soft button-down shirt (white or pale), no tie, navy or grey blazer if visit is to an older relative or someone in private rooms. Brown loafers or dark dress shoes.`;
+Dark trouser (charcoal/grey/navy), soft button-down shirt (white or pale), no tie, navy or grey blazer if visit is to an older relative or someone in private rooms. Brown loafers or dark dress shoes.
+
+Casual errands:
+Plain or lightly graphic tee (formality 1-2) in white, grey, or charcoal; dark-wash jeans or stone/olive chinos; minimalist white leather sneakers. No jacket, no collar required. The most relaxed occasion in the codex — a clean tee is the correct default here, not a fallback.
+
+Weekend brunch:
+A notch above errands: fine-knit polo or short-sleeve linen shirt over chinos in stone/olive, or a crisp plain tee under an unstructured overshirt. Minimalist sneakers or brown loafers. Relaxed but considered — appropriate for being seen socially. No tie, jacket optional.`;
 
 // Build the system prompt for a given city. Beirut overlay is the baseline;
 // Dubai/NY layer on top. Token-efficient: only the relevant city overlay

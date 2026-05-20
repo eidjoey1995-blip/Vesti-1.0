@@ -18,10 +18,16 @@ import { createClient } from "@supabase/supabase-js";
 // "accessory" | "other"
 const FOUNDATIONAL_MEN = [
   {
-    terms: ["shirt", "tshirt", "polo", "sweater"],
-    expected: 3,
-    title: "Foundational shirts.",
-    why: "A rotation of three shirts covers a working week without repetition — one white, one light blue, one neutral. Those three alongside the trousers you already own cover 80% of the calendar without a new outfit."
+    terms: ["shirt"],
+    expected: 1,
+    title: "No dress shirt.",
+    why: "A collared button-up is the piece every smart occasion is built around — weddings, dinners, client meetings. One white or pale blue shirt covers the majority of the codex occasions you'd actually face, and it anchors every pair of trousers you already own."
+  },
+  {
+    terms: ["tshirt", "polo", "sweater"],
+    expected: 2,
+    title: "Casual tops rotation.",
+    why: "Two casual tops — a plain tee and a polo or fine knit — give you a clean daily rotation and something to layer under a jacket without repeating. Two is the minimum; three covers a full working week without a repeat."
   },
   {
     terms: ["pants", "chinos", "jeans", "shorts"],
@@ -36,10 +42,16 @@ const FOUNDATIONAL_MEN = [
     why: "An unstructured blazer or jacket is the piece that moves an outfit from casual to put-together. One piece — navy or sand — layers over almost everything in the closet and doubles the read of every shirt you own."
   },
   {
-    terms: ["shoes", "sneakers", "boots"],
-    expected: 2,
-    title: "Two-shoe rotation.",
-    why: "One smart pair (loafer or derby) and one clean sneaker cover every occasion in the codex. Without both, you're either overdressed or underdressed — no middle ground for brunch-to-boardroom days."
+    terms: ["shoes"],
+    expected: 1,
+    title: "No smart shoe.",
+    why: "A leather loafer, derby, or oxford is the single most versatile addition to a casual closet. It moves any outfit — chinos, suit trousers, or dark jeans — from casual to dressed without changing anything else, and it's the minimum for every occasion from dinner to a client meeting."
+  },
+  {
+    terms: ["sneakers", "boots"],
+    expected: 1,
+    title: "No casual shoe.",
+    why: "A clean, minimalist sneaker is the default for most casual Beirut occasions — brunch, beach club, Friday lunch. It pairs with chinos, jeans, and even a soft jacket without reading underdressed."
   },
   {
     terms: ["accessory"],

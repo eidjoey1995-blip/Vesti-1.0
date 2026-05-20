@@ -5031,14 +5031,15 @@
       if (!isIOS || isStandalone || dismissed) return;
     } catch (e) { return; }
 
-    var css = '#vesti-install-banner{position:fixed;bottom:0;left:0;right:0;background:#4A6B4E;color:#FAF7F2;padding:14px 16px;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.4;box-shadow:0 -2px 12px rgba(0,0,0,0.12);display:flex;align-items:center;gap:12px;padding-bottom:calc(14px + env(safe-area-inset-bottom))}#vesti-install-banner .vib-text{flex:1}#vesti-install-banner .vib-text strong{display:block;font-weight:600;margin-bottom:2px}#vesti-install-banner .vib-share{display:inline-block;padding:0 5px;background:#FAF7F2;color:#4A6B4E;border-radius:4px;font-weight:700}#vesti-install-banner .vib-close{background:transparent;border:0;color:#FAF7F2;font-size:24px;line-height:1;cursor:pointer;padding:0 4px}';
+    var css = '#vesti-install-banner{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999;background:#FAF7F2;color:#2A2A24;border:1px solid #D9D5CC;border-radius:14px;padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,0.14);display:flex;align-items:flex-start;gap:12px}#vesti-install-banner .vib-text{flex:1}#vesti-install-banner .vib-text strong{display:block;font-weight:600;margin-bottom:4px;color:#4A6B4E}#vesti-install-banner .vib-share{display:inline-block;padding:1px 5px;background:#4A6B4E;color:#FAF7F2;border-radius:4px;font-weight:700}#vesti-install-banner .vib-close{min-width:32px;min-height:32px;border-radius:8px;background:rgba(0,0,0,0.05);border:0;color:#6f6a64;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}';
     var style = document.createElement('style');
     style.textContent = css;
     document.head.appendChild(style);
 
     var banner = document.createElement('div');
     banner.id = 'vesti-install-banner';
-    banner.innerHTML = '<div class="vib-text"><strong>Install Vesti</strong><span>Tap <span class="vib-share">&#x2197;</span> then <em>Add to Home Screen</em></span></div><button class="vib-close" aria-label="Dismiss">&times;</button>';
+    banner.setAttribute('role', 'note');
+    banner.innerHTML = '<div class="vib-text"><strong>Add Vesti to your Home Screen</strong><span>In Safari, tap the Share icon <span class="vib-share">&#x2197;</span> at the bottom, then choose <em>Add to Home Screen</em>.</span></div><button class="vib-close" aria-label="Dismiss">&times;</button>';
     document.body.appendChild(banner);
     banner.querySelector('.vib-close').addEventListener('click', function() {
       try { localStorage.setItem('vesti-install-dismissed', '1'); } catch(e){}

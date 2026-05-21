@@ -25,6 +25,7 @@ NAMING RULES (apply to subcategory and description):
 - NEVER use the words "garment", "item", "piece", or "clothing" — name the specific type (trousers, shirt, blazer, etc.).
 - Color: one simple word (grey, navy, beige, cream). Avoid multi-word color phrases like "dark slate blue-grey".
 - Pattern or material is welcome if clearly visible: "striped white shirt", "linen trousers", "cable-knit jumper". Default to color + type when not obvious.
+- Fabric/fiber: describe only what is visually apparent — weave, texture, or construction (e.g. "cable-knit", "denim", "corduroy"). Do not assert a fiber name (cotton, linen, wool, polyester) unless the weave or texture makes it unambiguous from the image alone.
 
 Return JSON only, no other text. Format:
 {

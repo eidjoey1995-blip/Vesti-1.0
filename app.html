@@ -985,6 +985,39 @@
       padding-right: 14px;
       padding-left: 36px;
     }
+    .edit-formality-group {
+      display: flex;
+      gap: 6px;
+    }
+    .edit-formality-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 2px;
+      border: 1px solid var(--hairline-soft);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink-mid);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+    .edit-formality-label {
+      font-size: 9px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-top: 3px;
+      color: var(--ink-mid);
+    }
+    .edit-formality-btn.is-active {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: #fff;
+    }
+    .edit-formality-btn.is-active .edit-formality-label { color: rgba(255,255,255,0.65); }
 
     /* ==========================================================
        Stylist
@@ -2630,6 +2663,27 @@
                 <div class="edit-field">
                   <label class="edit-label" for="item-edit-color" data-i18n="label_color">Color</label>
                   <input id="item-edit-color" class="edit-input" type="text" autocomplete="off" />
+                </div>
+                <div class="edit-field">
+                  <label class="edit-label">Formality</label>
+                  <div id="item-edit-formality" class="edit-formality-group" role="radiogroup" aria-label="Formality">
+                    <button type="button" class="edit-formality-btn" data-value="1">1<span class="edit-formality-label">Very casual</span></button>
+                    <button type="button" class="edit-formality-btn" data-value="2">2<span class="edit-formality-label">Casual</span></button>
+                    <button type="button" class="edit-formality-btn" data-value="3">3<span class="edit-formality-label">Everyday</span></button>
+                    <button type="button" class="edit-formality-btn" data-value="4">4<span class="edit-formality-label">Smart</span></button>
+                    <button type="button" class="edit-formality-btn" data-value="5">5<span class="edit-formality-label">Formal</span></button>
+                  </div>
+                </div>
+                <div class="edit-field">
+                  <label class="edit-label" for="item-edit-pattern">Pattern</label>
+                  <select id="item-edit-pattern" class="edit-select">
+                    <option value="solid">Solid</option>
+                    <option value="striped">Striped</option>
+                    <option value="check">Check</option>
+                    <option value="plaid">Plaid</option>
+                    <option value="printed">Printed</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
                 <p id="item-edit-error" style="display:none; color:var(--err); font-size:12px; margin:2px 0 8px;" data-i18n="edit_save_error">Couldn't save changes. Try again.</p>
               </div>
@@ -4597,9 +4651,11 @@
     const _editCatSelect  = document.getElementById("item-edit-category");
     const _editSubSelect  = document.getElementById("item-edit-subcat");
     const _editColorInput = document.getElementById("item-edit-color");
-    const _editSaveBtn    = document.getElementById("item-edit-save-btn");
-    const _editCancelBtn  = document.getElementById("item-edit-cancel-btn");
-    const _editError      = document.getElementById("item-edit-error");
+    const _editSaveBtn        = document.getElementById("item-edit-save-btn");
+    const _editCancelBtn      = document.getElementById("item-edit-cancel-btn");
+    const _editError          = document.getElementById("item-edit-error");
+    const _editFormalityGroup = document.getElementById("item-edit-formality");
+    const _editPatternSelect  = document.getElementById("item-edit-pattern");
 
     function garmentCategoryGroup(g) {
       const cat = (g.category || g.subcategory || "").toLowerCase();
@@ -4635,6 +4691,13 @@
       const catGroup = garmentCategoryGroup(g);
       _editCatSelect.value = catGroup;
       populateSubcatOptions(catGroup, g.subcategory);
+      if (_editFormalityGroup) {
+        const score = typeof g.formality_score === "number" ? g.formality_score : null;
+        _editFormalityGroup.querySelectorAll(".edit-formality-btn").forEach(b => {
+          b.classList.toggle("is-active", Number(b.dataset.value) === score);
+        });
+      }
+      if (_editPatternSelect) _editPatternSelect.value = g.pattern || "solid";
 
       _viewMeta.style.display    = "none";
       _editForm.style.display    = "";
@@ -4657,6 +4720,15 @@
       });
     }
 
+    if (_editFormalityGroup) {
+      _editFormalityGroup.addEventListener("click", (e) => {
+        const btn = e.target.closest(".edit-formality-btn");
+        if (!btn) return;
+        _editFormalityGroup.querySelectorAll(".edit-formality-btn").forEach(b => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+      });
+    }
+
     if (_editCancelBtn) {
       _editCancelBtn.addEventListener("click", () => exitEditMode());
     }
@@ -4675,6 +4747,9 @@
         if (newSubcat) updates.sub_category = newSubcat;
         const newColor = _editColorInput.value.trim();
         if (newColor) updates.color = newColor;
+        const activeBtn = _editFormalityGroup && _editFormalityGroup.querySelector(".edit-formality-btn.is-active");
+        if (activeBtn) updates.formality_score = Number(activeBtn.dataset.value);
+        if (_editPatternSelect && _editPatternSelect.value) updates.pattern = _editPatternSelect.value;
 
         _editSaveBtn.disabled = true;
         if (_editError) _editError.style.display = "none";
@@ -4690,10 +4765,12 @@
 
           // Merge API response back into local garment object.
           const row = json.garment || {};
-          g.description = row.description ?? g.description;
-          g.category    = row.category    ?? g.category;
-          g.subcategory = row.subcategory ?? g.subcategory;
-          g.color       = row.color       ?? g.color;
+          g.description    = row.description    ?? g.description;
+          g.category       = row.category       ?? g.category;
+          g.subcategory    = row.subcategory     ?? g.subcategory;
+          g.color          = row.color           ?? g.color;
+          g.formality_score = row.formality_score ?? g.formality_score;
+          g.pattern        = row.pattern         ?? g.pattern;
 
           // Keep closetState in sync so the tile reflects the correction.
           const idx = closetState.garments.findIndex(x => x.id === g.id);

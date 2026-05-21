@@ -3,7 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 // =========================================================
 // POST /api/update-garment
 // Auth: Authorization: Bearer <supabase_access_token>
-// Body: { garment_id, updates: { name?, category?, sub_category?, color? } }
+// Body: { garment_id, updates: { name?, category?, sub_category?, color?,
+//                                formality_score?, pattern? } }
 //
 // Verifies ownership, then updates only the allowed fields.
 // Server-controlled fields (id, user_id, thumb_url, bbox,
@@ -63,6 +64,13 @@ export default async function handler(req, res) {
   if (typeof updates.category === "string" && updates.category.trim()) patch.category = updates.category.trim();
   if (typeof updates.sub_category === "string" && updates.sub_category.trim()) patch.subcategory = updates.sub_category.trim();
   if (typeof updates.color === "string" && updates.color.trim()) patch.color = updates.color.trim();
+  if (Number.isInteger(updates.formality_score) && updates.formality_score >= 1 && updates.formality_score <= 5) {
+    patch.formality_score = updates.formality_score;
+  }
+  const VALID_PATTERNS = new Set(["solid", "striped", "check", "plaid", "printed", "other"]);
+  if (typeof updates.pattern === "string" && VALID_PATTERNS.has(updates.pattern)) {
+    patch.pattern = updates.pattern;
+  }
 
   if (Object.keys(patch).length === 0) {
     return res.status(400).json({ error: { code: "no_valid_updates", message: "No updatable fields provided" } });

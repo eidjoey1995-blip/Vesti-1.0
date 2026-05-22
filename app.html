@@ -853,6 +853,82 @@
     }
     .gap-summary strong { color: var(--ink); }
 
+    /* Today's Outfit card */
+    .today-outfit-card { margin: 0 24px 12px; }
+    .today-outfit-items {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 0 4px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .today-outfit-items::-webkit-scrollbar { display: none; }
+    .today-outfit-item {
+      flex: 0 0 72px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .today-outfit-thumb {
+      width: 64px;
+      height: 80px;
+      border-radius: 12px;
+      background: rgba(250,247,242,0.7);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--hairline);
+    }
+    .today-outfit-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .today-outfit-thumb svg { width: 68%; height: 68%; opacity: 0.85; }
+    .today-outfit-item-label {
+      font-size: 10px;
+      color: var(--ink-mid);
+      text-align: center;
+      line-height: 1.3;
+      max-width: 64px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .today-outfit-reasoning {
+      font-size: 12px;
+      color: var(--ink-mid);
+      line-height: 1.55;
+      margin: 4px 0 10px;
+    }
+    .today-milestone-track {
+      height: 4px;
+      background: var(--hairline);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .today-milestone-fill {
+      height: 100%;
+      background: var(--forest);
+      border-radius: 2px;
+      transition: width 600ms ease;
+    }
+    .today-milestone-label {
+      font-size: 11px;
+      color: var(--ink-mid);
+      margin: 5px 0 0;
+    }
+    .today-skeleton { display: flex; gap: 8px; padding: 10px 0 4px; }
+    .today-skeleton-thumb {
+      flex: 0 0 64px;
+      height: 80px;
+      border-radius: 12px;
+      background: var(--hairline);
+      animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes skeleton-pulse {
+      0%, 100% { opacity: 0.55; }
+      50%       { opacity: 1; }
+    }
+
     /* Item detail */
     .item-hero {
       margin: 0 24px 16px;
@@ -2534,6 +2610,40 @@
               <div class="stat" data-goto="closet-gaps"><div class="stat-num" id="stat-gaps">—</div><div class="stat-label" data-i18n="stat_gaps">Gaps found</div></div>
             </div>
 
+            <!-- Today's Outfit card — rendered by loadTodaysOutfit() -->
+            <div id="today-outfit-card" class="card today-outfit-card">
+              <!-- Loading skeleton -->
+              <div id="today-outfit-loading">
+                <p class="h-eyebrow" style="margin:0 0 2px;" data-i18n="today_outfit_eyebrow">Today's outfit</p>
+                <div class="today-skeleton">
+                  <div class="today-skeleton-thumb"></div>
+                  <div class="today-skeleton-thumb"></div>
+                  <div class="today-skeleton-thumb"></div>
+                  <div class="today-skeleton-thumb" style="opacity:0.45"></div>
+                </div>
+              </div>
+              <!-- Outfit content -->
+              <div id="today-outfit-content" hidden>
+                <p class="h-eyebrow" style="margin:0 0 2px;" data-i18n="today_outfit_eyebrow">Today's outfit</p>
+                <div id="today-outfit-items-row" class="today-outfit-items"></div>
+                <p id="today-outfit-reasoning" class="today-outfit-reasoning"></p>
+                <div class="today-milestone-track">
+                  <div id="today-milestone-fill" class="today-milestone-fill" style="width:0%"></div>
+                </div>
+                <p id="today-milestone-label" class="today-milestone-label"></p>
+              </div>
+              <!-- Empty closet -->
+              <div id="today-outfit-empty" hidden>
+                <p class="h-eyebrow" style="margin:0 0 4px;" data-i18n="today_outfit_eyebrow">Today's outfit</p>
+                <p style="font-size:13px;color:var(--ink-mid);margin:6px 0 0;" data-i18n="today_outfit_empty">Add garments to get your first daily outfit.</p>
+              </div>
+              <!-- Error state -->
+              <div id="today-outfit-error-state" hidden>
+                <p class="h-eyebrow" style="margin:0 0 4px;" data-i18n="today_outfit_eyebrow">Today's outfit</p>
+                <p class="today-outfit-err-msg" style="font-size:12px;color:var(--ink-mid);margin:6px 0 0;"></p>
+              </div>
+            </div>
+
             <div class="closet-filters">
               <div class="chip active" data-i18n="filter_all" data-filter="all">All</div>
               <div class="chip" data-i18n="filter_tops" data-filter="tops">Tops</div>
@@ -3389,6 +3499,12 @@
         occ_coffee: "Coffee · casual", occ_work: "Work · smart", occ_dinner: "Dinner · soft",
         uses_own: "3 of 4 from your closet", uses_all_own: "4 of 4 from your closet", uses_mix: "2 of 4 from your closet",
         today_see_closet: "See my closet",
+        // Today's Outfit card (Closet screen)
+        today_outfit_eyebrow: "Today's outfit",
+        today_outfit_empty: "Add garments to get your first daily outfit.",
+        today_outfit_error: "Couldn't load today's outfit.",
+        today_outfit_milestone_full: "Wardrobe complete — all key pieces covered.",
+        today_outfit_milestone_next: "Add {needed} more {label} to round out your wardrobe.",
         // Closet
         closet_eyebrow: "Week 3 · unlocked",
         closet_h: "Your closet.",
@@ -3642,6 +3758,12 @@
         occ_coffee: "قهوة · كاجوال", occ_work: "عمل · رسمي", occ_dinner: "عشاء · هادئ",
         uses_own: "٣ من ٤ من خزانتك", uses_all_own: "٤ من ٤ من خزانتك", uses_mix: "٢ من ٤ من خزانتك",
         today_see_closet: "اعرض خزانتي",
+        // Today's Outfit card (Closet screen)
+        today_outfit_eyebrow: "إطلالة اليوم",
+        today_outfit_empty: "أضف قطعاً للحصول على إطلالتك اليومية.",
+        today_outfit_error: "تعذّر تحميل إطلالة اليوم.",
+        today_outfit_milestone_full: "الخزانة مكتملة — جميع القطع الأساسية موجودة.",
+        today_outfit_milestone_next: "أضف {needed} {label} لتكتمل خزانتك.",
         closet_eyebrow: "الأسبوع الثالث · مفتوح",
         closet_h: "خزانتك.",
         closet_lead: "بُنيت من الإيصالات وصورة مجمّعة واحدة. كل شيء قابل للتعديل.",
@@ -3975,7 +4097,7 @@
       }
 
       // BETA: lazy-load real garments when entering the closet screen.
-      if (id === "closet") loadCloset();
+      if (id === "closet") { loadCloset(); loadTodaysOutfit(); }
       // BETA: lazy-load gap analysis when entering the closet-gaps screen.
       if (id === "closet-gaps") loadGaps();
       // BETA: lazy-load profile stats when entering the profile screen.
@@ -4192,6 +4314,91 @@
       } finally {
         grid.removeAttribute("aria-busy");
         closetState.loading = false;
+      }
+    }
+
+    // -------- Today's Outfit wiring --------
+    const todaysOutfitState = { loaded: false, loading: false };
+
+    function _showTodaysOutfitState(which, errMsg) {
+      ["today-outfit-loading","today-outfit-content","today-outfit-empty","today-outfit-error-state"]
+        .forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+      const target = { loading: "today-outfit-loading", content: "today-outfit-content", empty: "today-outfit-empty", error: "today-outfit-error-state" }[which];
+      if (!target) return;
+      const el = document.getElementById(target);
+      if (!el) return;
+      el.hidden = false;
+      if (which === "error") {
+        const d = i18n[state.lang] || i18n.en;
+        const msgEl = el.querySelector(".today-outfit-err-msg");
+        if (msgEl) msgEl.textContent = errMsg || d.today_outfit_error || "Couldn't load today's outfit.";
+      }
+    }
+
+    function _renderTodaysOutfit(data) {
+      const itemsRow = document.getElementById("today-outfit-items-row");
+      const items = (data?.outfit?.items) || [];
+      if (itemsRow) {
+        const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+        itemsRow.innerHTML = items.map(item => {
+          const sym = symbolFor(item.category);
+          const thumb = item.thumb_url
+            ? `<img src="${esc(item.thumb_url)}" alt="" loading="lazy">`
+            : `<svg viewBox="0 0 50 60"><use href="#${sym}"/></svg>`;
+          const rawLabel = (item.subcategory || item.category || "").trim();
+          const label = rawLabel ? rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1) : "";
+          return `<div class="today-outfit-item"><div class="today-outfit-thumb">${thumb}</div>${label ? `<span class="today-outfit-item-label">${esc(label)}</span>` : ""}</div>`;
+        }).join("");
+      }
+
+      const reasoningEl = document.getElementById("today-outfit-reasoning");
+      if (reasoningEl) {
+        const text = data?.outfit?.reasoning || "";
+        reasoningEl.textContent = text;
+        reasoningEl.hidden = !text;
+      }
+
+      const milestone = data?.milestone;
+      const fill = document.getElementById("today-milestone-fill");
+      if (fill && milestone) fill.style.width = Math.min(milestone.percent, 100) + "%";
+      const labelEl = document.getElementById("today-milestone-label");
+      if (labelEl && milestone) {
+        const d = i18n[state.lang] || i18n.en;
+        if (milestone.full) {
+          labelEl.textContent = d.today_outfit_milestone_full || "Wardrobe complete.";
+        } else if (milestone.next) {
+          const tmpl = d.today_outfit_milestone_next || "Add {needed} more {label} to round out your wardrobe.";
+          labelEl.textContent = tmpl.replace("{needed}", milestone.next.needed).replace("{label}", milestone.next.label.toLowerCase());
+        } else {
+          labelEl.textContent = milestone.percent + "% wardrobe coverage";
+        }
+      }
+    }
+
+    async function loadTodaysOutfit(force = false) {
+      if (todaysOutfitState.loaded && !force) return;
+      if (todaysOutfitState.loading) return;
+      todaysOutfitState.loading = true;
+
+      _showTodaysOutfitState("loading");
+
+      try {
+        const r = await fetch("/api/todays-outfit", { headers: getAuthHeaders() });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
+
+        todaysOutfitState.loaded = true;
+
+        if (j.empty_closet) {
+          _showTodaysOutfitState("empty");
+        } else {
+          _renderTodaysOutfit(j);
+          _showTodaysOutfitState("content");
+        }
+      } catch (err) {
+        _showTodaysOutfitState("error", err.message);
+      } finally {
+        todaysOutfitState.loading = false;
       }
     }
 

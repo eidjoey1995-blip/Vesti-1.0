@@ -19,13 +19,40 @@ const REGISTER_TO_OCCASION = {
   "business":     "a typical business workday",
 };
 
-// =========================================================
-// TODO (Increment 3): fill in real milestone logic.
-// For now returns a zero-progress stub so the response
-// shape is stable for the UI wiring increment.
-// =========================================================
-function computeMilestone(_garmentIds) {
-  return { percent: 0, full: false, groups: [], next: null };
+const MILESTONE_GROUPS = [
+  { key: "tops",    label: "Tops",    terms: ["shirt", "tshirt", "polo", "sweater"], target: 4 },
+  { key: "pants",   label: "Bottoms", terms: ["pants", "jeans", "chinos", "shorts"], target: 2 },
+  { key: "jackets", label: "Jackets", terms: ["blazer", "jacket", "coat"],           target: 2 },
+  { key: "shoes",   label: "Shoes",   terms: ["shoes", "sneakers", "boots"],         target: 2 },
+];
+
+// Takes the full array of category strings for the user's closet (not just
+// today's outfit) and returns a milestone snapshot of wardrobe depth.
+function computeMilestone(categories) {
+  const groups = MILESTONE_GROUPS.map(({ key, label, terms, target }) => {
+    const termSet = new Set(terms);
+    const have = categories.filter(c => termSet.has((c || "").toLowerCase().trim())).length;
+    return { key, label, have, target };
+  });
+
+  const pcts = groups.map(g => Math.min(g.have / g.target, 1));
+  const percent = Math.round((pcts.reduce((a, b) => a + b, 0) / pcts.length) * 100);
+  const full = groups.every(g => g.have >= g.target);
+
+  // Largest gap wins; tie-break by MILESTONE_GROUPS order (tops → pants → jackets → shoes).
+  let next = null;
+  if (!full) {
+    let maxGap = 0;
+    for (const g of groups) {
+      const gap = g.target - g.have;
+      if (gap > maxGap) {
+        maxGap = gap;
+        next = { key: g.key, label: g.label, needed: gap };
+      }
+    }
+  }
+
+  return { percent, full, groups, next };
 }
 
 async function resolveUser(req, supabase) {
@@ -88,21 +115,37 @@ export default async function handler(req, res) {
     console.warn("todays-outfit: profile read exception:", e?.message || e);
   }
 
-  // ── 2. Check cache: does an outfit row already exist for today? ────────────
+  // ── 2. Check cache + fetch full closet categories in parallel ────────────
+  // Milestone measures the depth of the whole closet, not just today's outfit.
   let outfitRow = null;
-  {
-    const { data, error: cacheErr } = await supabase
+  let closetCategories = [];
+
+  const [cacheResult, closetResult] = await Promise.all([
+    supabase
       .from("outfits")
       .select("id, garment_ids, rationale, reasoning, occasion, context")
       .eq("user_id", userId)
       .eq("for_date", today)
       .limit(1)
-      .maybeSingle();
-    if (cacheErr) {
-      console.warn("todays-outfit: cache read warning:", cacheErr.message);
-    } else if (data) {
-      outfitRow = data;
-    }
+      .maybeSingle(),
+    supabase
+      .from("garments")
+      .select("category")
+      .eq("user_id", userId),
+  ]);
+
+  if (cacheResult.error) {
+    console.warn("todays-outfit: cache read warning:", cacheResult.error.message);
+  } else if (cacheResult.data) {
+    outfitRow = cacheResult.data;
+  }
+
+  if (closetResult.error) {
+    console.warn("todays-outfit: closet categories warning:", closetResult.error.message);
+  } else if (closetResult.data) {
+    closetCategories = closetResult.data
+      .map(r => (r.category || "").toLowerCase().trim())
+      .filter(Boolean);
   }
 
   // ── 3. Generate if no cached outfit ───────────────────────────────────────
@@ -134,7 +177,7 @@ export default async function handler(req, res) {
             date: today,
             outfit: null,
             empty_closet: true,
-            milestone: computeMilestone([]),
+            milestone: computeMilestone(closetCategories),
           });
         }
         return res.status(502).json({
@@ -212,6 +255,6 @@ export default async function handler(req, res) {
       items: hydratedItems,
       reasoning: reasoningText,
     },
-    milestone: computeMilestone(garmentIds),
+    milestone: computeMilestone(closetCategories),
   });
 }

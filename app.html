@@ -1328,6 +1328,17 @@
     .settings-row + .settings-row {
       border-top: 1px solid var(--hairline-soft);
     }
+    .settings-row--stacked {
+      flex-direction: column;
+      align-items: stretch;
+      cursor: default;
+      gap: 10px;
+    }
+    .settings-row-hint {
+      font-size: 11px;
+      color: var(--ink-mid);
+      margin-top: 2px;
+    }
     .settings-row-label {
       font-size: 15px;
       font-weight: 500;
@@ -3044,6 +3055,17 @@
                   <span class="settings-chev">›</span>
                 </div>
               </div>
+              <div class="settings-row settings-row--stacked">
+                <div>
+                  <span class="settings-row-label" data-i18n="set_daily_style">Daily style</span>
+                  <div class="settings-row-hint" data-i18n="set_daily_style_hint">Changes take effect tomorrow.</div>
+                </div>
+                <div id="daily-register-selector" class="edit-formality-group" role="radiogroup" aria-label="Daily style">
+                  <button type="button" class="edit-formality-btn" data-register="casual"><span data-i18n="daily_style_casual">Casual</span></button>
+                  <button type="button" class="edit-formality-btn" data-register="smart-casual"><span data-i18n="daily_style_smart">Smart-casual</span></button>
+                  <button type="button" class="edit-formality-btn" data-register="business"><span data-i18n="daily_style_business">Business</span></button>
+                </div>
+              </div>
               <div class="settings-row">
                 <span class="settings-row-label" data-i18n="set_notifications">Notifications</span>
                 <span class="settings-chev">›</span>
@@ -3625,6 +3647,11 @@
         path4_time: "Roadmap · in partnership talks",
         section_settings: "Settings",
         set_language: "Language",
+        set_daily_style: "Daily style",
+        set_daily_style_hint: "Changes take effect tomorrow.",
+        daily_style_casual: "Casual",
+        daily_style_smart: "Smart-casual",
+        daily_style_business: "Business",
         set_notifications: "Notifications",
         set_help: "Help & feedback",
         set_about: "About Vesti",
@@ -3874,6 +3901,11 @@
         path3_time: "قريباً · ٣ شركاء مفعّلين",
         section_settings: "الإعدادات",
         set_language: "اللغة",
+        set_daily_style: "الأسلوب اليومي",
+        set_daily_style_hint: "يسري التغيير من الغد.",
+        daily_style_casual: "كاجوال",
+        daily_style_smart: "أنيق-كاجوال",
+        daily_style_business: "رسمي",
         set_notifications: "الإشعارات",
         set_help: "المساعدة والملاحظات",
         set_about: "عن فيستي",
@@ -4101,7 +4133,7 @@
       // BETA: lazy-load gap analysis when entering the closet-gaps screen.
       if (id === "closet-gaps") loadGaps();
       // BETA: lazy-load profile stats when entering the profile screen.
-      if (id === "profile") loadProfileStats();
+      if (id === "profile") { loadProfileStats(); loadDailyRegister(); }
     }
 
     // -------- BETA closet wiring --------
@@ -4578,6 +4610,55 @@
       } finally {
         statsState.loading = false;
       }
+    }
+
+    // -------- Daily register wiring --------
+    const dailyRegisterState = { loaded: false, loading: false };
+
+    function setDailyRegisterUI(value) {
+      const sel = document.getElementById("daily-register-selector");
+      if (!sel) return;
+      sel.querySelectorAll(".edit-formality-btn[data-register]").forEach(b => {
+        b.classList.toggle("is-active", b.dataset.register === value);
+      });
+    }
+
+    async function loadDailyRegister(force = false) {
+      if (dailyRegisterState.loaded && !force) return;
+      if (dailyRegisterState.loading) return;
+      dailyRegisterState.loading = true;
+      try {
+        const r = await fetch("/api/update-profile", { headers: getAuthHeaders() });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
+        setDailyRegisterUI(j?.profile?.daily_register || "smart-casual");
+        dailyRegisterState.loaded = true;
+      } catch (err) {
+        console.warn("loadDailyRegister error:", err.message);
+      } finally {
+        dailyRegisterState.loading = false;
+      }
+    }
+
+    const _dailyRegisterSelector = document.getElementById("daily-register-selector");
+    if (_dailyRegisterSelector) {
+      _dailyRegisterSelector.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".edit-formality-btn[data-register]");
+        if (!btn) return;
+        const value = btn.dataset.register;
+        setDailyRegisterUI(value); // optimistic
+        try {
+          const r = await fetch("/api/update-profile", {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ daily_register: value }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) console.warn("update-profile failed:", j?.error?.message);
+        } catch (err) {
+          console.warn("update-profile error:", err.message);
+        }
+      });
     }
 
     // -------- BETA stylist wiring --------

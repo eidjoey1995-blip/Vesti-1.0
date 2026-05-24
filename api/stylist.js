@@ -191,7 +191,8 @@ OUTPUT RULES:
 - garment_id MUST be one of the ids in the closet provided. Do not invent ids.
 - Aim for one top, one bottom, one shoe, and optionally one layer + one accessory (3-5 items total).
 - Prefer pieces whose formality_score and fabric weight fit the occasion + city.
-- If the closet lacks something essential (e.g. no shoes), pick the closest substitute and name the gap explicitly in reasoning.`;
+- If the closet lacks something essential (e.g. no shoes), pick the closest substitute and name the gap explicitly in reasoning.
+- ROTATION: If a list of recently-worn garment ids is provided, prefer different garments so the user sees variety day to day. Only repeat a recently-worn piece when the closet has no suitable alternative for the occasion — appropriateness always beats novelty, but when good alternatives exist, rotate.`;
 }
 
 const anthropic = new Anthropic({
@@ -258,10 +259,15 @@ export default async function handler(req, res) {
   const { userId, err: authErr } = await resolveUser(req, supabase);
   if (authErr) return res.status(401).json({ error: authErr });
 
-  const { occasion } = req.body || {};
+  const { occasion, avoid_garment_ids } = req.body || {};
   if (!occasion || typeof occasion !== "string" || occasion.trim().length === 0) {
     return res.status(400).json({ error: { code: "missing_occasion", message: "occasion is required" } });
   }
+
+  // Normalize avoid list — soft preference only; model still sees full closet.
+  const avoidIds = Array.isArray(avoid_garment_ids)
+    ? avoid_garment_ids.map((id) => String(id)).filter(Boolean)
+    : [];
 
   // Profile read — city is the codex overlay key. Non-fatal if missing.
   let city = null;
@@ -317,13 +323,17 @@ export default async function handler(req, res) {
     return out;
   });
 
-  const userMessage = [
+  const userMessageParts = [
     `Occasion: ${occasion.trim()}`,
     `City: ${city || "unknown"}`,
     "",
     "Closet (JSON):",
     JSON.stringify(compactGarments)
-  ].join("\n");
+  ];
+  if (avoidIds.length > 0) {
+    userMessageParts.push(`\nRecently worn (last few days), rotate away from these where possible: ${JSON.stringify(avoidIds)}`);
+  }
+  const userMessage = userMessageParts.join("\n");
 
   const weatherLine = weather
     ? `Current weather in ${city}: ${weather.temp}°C, ${weather.conditions}. Favor fabrics and layers appropriate for this — lightweight cotton/linen above 28°C, layered knits 15-22°C, outerwear below 15°C, avoid suede/light colors if rain.`

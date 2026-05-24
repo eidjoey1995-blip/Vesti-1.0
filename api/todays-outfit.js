@@ -152,6 +152,33 @@ export default async function handler(req, res) {
   if (!outfitRow) {
     const occasion = REGISTER_TO_OCCASION[daily_register] || REGISTER_TO_OCCASION["smart-casual"];
 
+    // Query the last 3 dated outfits to build a soft-avoid list for rotation.
+    let avoidIds = [];
+    try {
+      const { data: recentOutfits, error: recentErr } = await supabase
+        .from("outfits")
+        .select("garment_ids")
+        .eq("user_id", userId)
+        .not("for_date", "is", null)
+        .lt("for_date", today)
+        .order("for_date", { ascending: false })
+        .limit(3);
+      if (recentErr) {
+        console.warn("todays-outfit: recent outfits query warning:", recentErr.message);
+      } else if (recentOutfits) {
+        const seen = new Set();
+        for (const row of recentOutfits) {
+          if (!Array.isArray(row.garment_ids)) continue;
+          for (const id of row.garment_ids) {
+            if (id != null) seen.add(String(id));
+          }
+        }
+        avoidIds = Array.from(seen);
+      }
+    } catch (e) {
+      console.warn("todays-outfit: recent outfits exception:", e?.message || e);
+    }
+
     // Call the internal stylist endpoint. Build the base URL from the
     // incoming request's host so this works on both Vercel and local dev.
     const proto = (req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
@@ -166,7 +193,7 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
           "Authorization": req.headers.authorization || "",
         },
-        body: JSON.stringify({ occasion }),
+        body: JSON.stringify({ occasion, avoid_garment_ids: avoidIds }),
       });
       stylistJson = await stylistRes.json().catch(() => ({}));
 

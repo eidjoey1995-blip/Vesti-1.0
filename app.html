@@ -929,6 +929,42 @@
       50%       { opacity: 1; }
     }
 
+    /* Outfit feedback — thumbs up/down (#110) */
+    .swipe-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .swipe-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 8px;
+      border-radius: 12px;
+      border: 1px solid var(--hairline);
+      background: var(--card-cream);
+      color: var(--ink-mid);
+      font-family: var(--font-body);
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease;
+    }
+    .swipe-btn svg { width: 16px; height: 16px; flex: 0 0 auto; }
+    .swipe-btn--yes.is-active {
+      background: var(--moss);
+      border-color: var(--forest);
+      color: var(--forest);
+    }
+    .swipe-btn--no.is-active {
+      background: var(--rose-lt);
+      border-color: var(--terracotta);
+      color: var(--terracotta);
+    }
+    .swipe-row.is-done .swipe-btn:not(.is-active) { opacity: 0.4; }
+    .swipe-row.is-done .swipe-btn { cursor: default; }
+
     /* Item detail */
     .item-hero {
       margin: 0 24px 16px;
@@ -2642,6 +2678,7 @@
                   <div id="today-milestone-fill" class="today-milestone-fill" style="width:0%"></div>
                 </div>
                 <p id="today-milestone-label" class="today-milestone-label"></p>
+                <div id="today-outfit-swipe"></div>
               </div>
               <!-- Empty closet -->
               <div id="today-outfit-empty" hidden>
@@ -3591,6 +3628,8 @@
         stylist_lead: "Pick an occasion and we'll suggest an outfit from your closet.",
         stylist_loading: "Pulling a look together…",
         stylist_no_result: "No look found for this occasion — try a different one.",
+        swipe_yes: "Love it",
+        swipe_no: "Not for me",
         occ_work_t: "Boardroom", occ_work_h: "Client-facing. Full polish required.",
         occ_eid_t: "Workday", occ_eid_h: "Smart casual. Office but not stiff.",
         occ_brunch_t: "Weekend brunch", occ_brunch_h: "Mar Mikhael or the coast. Relaxed.",
@@ -3852,6 +3891,8 @@
         stylist_lead: "اختر مناسبة. ندمج خزانتك مع ثلاث قطع من الفيد.",
         stylist_loading: "نجهّز لك إطلالة…",
         stylist_no_result: "ما لقينا إطلالة لهالمناسبة — جرّبي مناسبة ثانية.",
+        swipe_yes: "أعجبتني",
+        swipe_no: "ليست لي",
         occ_work_t: "اجتماع العميل", occ_work_h: "رسمي كامل. لا مجال للتهاون.",
         occ_eid_t: "يوم المكتب", occ_eid_h: "سمارت كاجوال. أناقة بدون تصلّب.",
         occ_brunch_t: "برنش الويكند", occ_brunch_h: "مار مخايل أو الكورنيش. استرخاء.",
@@ -4405,6 +4446,10 @@
           labelEl.textContent = milestone.percent + "% wardrobe coverage";
         }
       }
+
+      // Thumbs up/down on the daily outfit (#110).
+      const swipeEl = document.getElementById("today-outfit-swipe");
+      if (swipeEl) swipeEl.innerHTML = swipeRowHTML(data?.outfit_id);
     }
 
     async function loadTodaysOutfit(force = false) {
@@ -4671,6 +4716,58 @@
     const STYLIST_ENDPOINT = "/api/stylist";
     const stylistState = { loading: false, occasion: null, outfit: null, error: null };
 
+    // -------- Outfit feedback — thumbs up/down → POST /api/swipe (#110) --------
+    // Renders a yes/no control under a generated outfit. Signal values match the
+    // /api/swipe contract: "yes" | "no" | "refresh". Failures are non-fatal —
+    // feedback is best-effort and must never block the styling experience.
+    function swipeRowHTML(outfitId) {
+      if (!outfitId) return "";
+      const d = i18n[state.lang] || i18n.en;
+      const yes = (d.swipe_yes || "Love it").replace(/</g, "&lt;");
+      const no  = (d.swipe_no  || "Not for me").replace(/</g, "&lt;");
+      const idEsc = String(outfitId).replace(/"/g, "&quot;");
+      return `<div class="swipe-row" data-outfit-id="${idEsc}">
+        <button class="swipe-btn swipe-btn--yes" type="button" data-signal="yes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+          <span>${yes}</span>
+        </button>
+        <button class="swipe-btn swipe-btn--no" type="button" data-signal="no">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+          <span>${no}</span>
+        </button>
+      </div>`;
+    }
+
+    async function sendSwipe(outfitId, signal) {
+      if (!outfitId || !signal) return false;
+      try {
+        const r = await fetch("/api/swipe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+          body: JSON.stringify({ outfit_id: outfitId, signal })
+        });
+        return r.ok;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // Delegated handler — works for the stylist result AND the Today's Outfit card.
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest(".swipe-btn");
+      if (!btn) return;
+      const row = btn.closest(".swipe-row");
+      if (!row || row.classList.contains("is-done")) return;
+      const outfitId = row.getAttribute("data-outfit-id");
+      const signal = btn.getAttribute("data-signal");
+      if (!outfitId || !signal) return;
+      // Optimistic: lock the row, mark the chosen button, then fire-and-forget.
+      row.querySelectorAll(".swipe-btn").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      row.classList.add("is-done");
+      sendSwipe(outfitId, signal);
+    });
+
     function stylistEls() {
       const root = document.querySelector('section[data-screen="stylist-result"]');
       return {
@@ -4758,7 +4855,7 @@
       const occasionEsc = String(occasion).replace(/&/g, "&amp;").replace(/</g, "&lt;");
       const reasoningEsc = String(reasoning).replace(/&/g, "&amp;").replace(/</g, "&lt;");
       const colorMod = COLOR_MODS[0 % COLOR_MODS.length];
-      const lookNum = String(1).padStart(2, "0");
+      const outfitId = payload && payload.outfit_id;
 
       lookbook.innerHTML = `
         <div class="look">
@@ -4766,12 +4863,12 @@
             <div style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:0 16px;box-sizing:border-box;overflow:hidden;">
               ${thumbs}
             </div>
-            <div class="look-num">Look ${lookNum}</div>
           </div>
           <div class="look-body">
             <h3 class="look-title">For ${occasionEsc}.</h3>
             <p class="look-sub">${reasoningEsc}</p>
             <div class="look-items">${pills}</div>
+            ${swipeRowHTML(outfitId)}
           </div>
         </div>`;
     }
@@ -4815,7 +4912,11 @@
     document.addEventListener("click", (e) => {
       const refreshBtn = e.target.closest('section[data-screen="stylist-result"] .screen-top .icon-btn[aria-label="Refresh"]');
       if (!refreshBtn) return;
-      if (stylistState.occasion && !stylistState.loading) loadStylist(stylistState.occasion);
+      if (stylistState.occasion && !stylistState.loading) {
+        // Refreshing away from an outfit is itself a signal (#110).
+        sendSwipe(stylistState.outfit && stylistState.outfit.outfit_id, "refresh");
+        loadStylist(stylistState.occasion);
+      }
     });
 
     // -------- Item-detail population --------

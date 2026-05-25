@@ -965,6 +965,50 @@
     .swipe-row.is-done .swipe-btn:not(.is-active) { opacity: 0.4; }
     .swipe-row.is-done .swipe-btn { cursor: default; }
 
+    /* Per-garment flag panel — thumbs-down "which pieces missed?" (#113) */
+    .flag-panel { margin-top: 12px; }
+    .flag-panel-q {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--ink-mid);
+      margin: 0 0 8px;
+    }
+    .flag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .flag-chip {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--hairline);
+      background: var(--card-cream);
+      color: var(--ink-mid);
+      font-family: var(--font-body);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .flag-chip.is-flagged {
+      background: var(--rose-lt);
+      border-color: var(--terracotta);
+      color: var(--terracotta);
+    }
+    .flag-actions { display: flex; gap: 10px; margin-top: 12px; }
+    .flag-btn {
+      flex: 1;
+      padding: 10px 8px;
+      border-radius: 12px;
+      border: 1px solid var(--hairline);
+      background: var(--card-cream);
+      color: var(--ink-mid);
+      font-family: var(--font-body);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .flag-btn--go {
+      background: var(--forest);
+      border-color: var(--forest);
+      color: var(--card-cream);
+    }
+    .flag-btn[disabled] { opacity: 0.45; cursor: default; }
+
     /* Item detail */
     .item-hero {
       margin: 0 24px 16px;
@@ -4450,6 +4494,13 @@
       // Thumbs up/down on the daily outfit (#110).
       const swipeEl = document.getElementById("today-outfit-swipe");
       if (swipeEl) swipeEl.innerHTML = swipeRowHTML(data?.outfit_id);
+
+      // Register pieces so a thumbs-down can flag specific garments (#113).
+      // surface "today": feedback is captured but not regenerated here (#115).
+      registerOutfitFeedback(data?.outfit_id, items.map(item => {
+        const cat = (item.subcategory || item.category || "Piece");
+        return { garment_id: item.id != null ? item.id : item.garment_id, label: String(cat).replace(/^./, c => c.toUpperCase()) };
+      }), null, "today");
     }
 
     async function loadTodaysOutfit(force = false) {
@@ -4738,13 +4789,17 @@
       </div>`;
     }
 
-    async function sendSwipe(outfitId, signal) {
+    async function sendSwipe(outfitId, signal, rejectedIds) {
       if (!outfitId || !signal) return false;
       try {
+        const body = { outfit_id: outfitId, signal };
+        if (Array.isArray(rejectedIds) && rejectedIds.length > 0) {
+          body.rejected_garment_ids = rejectedIds;
+        }
         const r = await fetch("/api/swipe", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-          body: JSON.stringify({ outfit_id: outfitId, signal })
+          body: JSON.stringify(body)
         });
         return r.ok;
       } catch (e) {
@@ -4752,21 +4807,139 @@
       }
     }
 
+    // -------- Per-garment feedback registry (#113/#114) --------
+    // Each rendered outfit registers its pieces + occasion so a thumbs-down can
+    // ask WHICH pieces missed and a regeneration can keep the rest.
+    // surface: "stylist" (occasion known → regeneratable) | "today".
+    const outfitFeedbackRegistry = new Map();
+    function registerOutfitFeedback(outfitId, items, occasion, surface) {
+      if (!outfitId) return;
+      const clean = (items || [])
+        .filter(it => it && it.garment_id != null)
+        .map(it => ({
+          id: String(it.garment_id),
+          label: String(it.label || "Piece"),
+          role: it.role || null
+        }));
+      outfitFeedbackRegistry.set(String(outfitId), {
+        items: clean, occasion: occasion || null, surface: surface || "stylist"
+      });
+    }
+
+    // Build + open the "which pieces missed?" panel inside a swipe row.
+    function openFlagPanel(row, outfitId) {
+      const meta = outfitFeedbackRegistry.get(String(outfitId));
+      const d = i18n[state.lang] || i18n.en;
+      // No per-garment data → fall back to a plain whole-outfit "no".
+      if (!meta || meta.items.length === 0) {
+        row.querySelectorAll(".swipe-btn").forEach(b => b.classList.remove("is-active"));
+        const noBtn = row.querySelector(".swipe-btn--no");
+        if (noBtn) noBtn.classList.add("is-active");
+        row.classList.add("is-done");
+        sendSwipe(outfitId, "no");
+        return;
+      }
+      const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+      const chips = meta.items.map(it =>
+        `<button type="button" class="flag-chip" data-gid="${esc(it.id)}">${esc(it.label)}</button>`
+      ).join("");
+      const goLabel = meta.surface === "stylist"
+        ? (d.flag_try_rest || "Try again with the rest")
+        : (d.flag_note_it || "Note it");
+      const panel = document.createElement("div");
+      panel.className = "flag-panel";
+      panel.innerHTML = `
+        <p class="flag-panel-q">${esc(d.flag_question || "Which pieces missed? Tap any that didn't work.")}</p>
+        <div class="flag-chips">${chips}</div>
+        <div class="flag-actions">
+          <button type="button" class="flag-btn" data-flag-action="whole">${esc(d.flag_whole || "Whole look")}</button>
+          <button type="button" class="flag-btn flag-btn--go" data-flag-action="go" disabled>${esc(goLabel)}</button>
+        </div>`;
+      row.querySelectorAll(".swipe-btn").forEach(b => { b.disabled = true; b.style.opacity = "0.4"; });
+      row.appendChild(panel);
+    }
+
     // Delegated handler — works for the stylist result AND the Today's Outfit card.
     document.addEventListener("click", (e) => {
+      // Flag-panel interactions take priority over the swipe buttons.
+      const chip = e.target.closest(".flag-chip");
+      if (chip) {
+        chip.classList.toggle("is-flagged");
+        const panel = chip.closest(".flag-panel");
+        const goBtn = panel && panel.querySelector('[data-flag-action="go"]');
+        if (goBtn) goBtn.disabled = !panel.querySelector(".flag-chip.is-flagged");
+        return;
+      }
+      const flagBtn = e.target.closest("[data-flag-action]");
+      if (flagBtn) {
+        const row = flagBtn.closest(".swipe-row");
+        const panel = flagBtn.closest(".flag-panel");
+        if (!row || !panel || row.classList.contains("is-done")) return;
+        const outfitId = row.getAttribute("data-outfit-id");
+        const action = flagBtn.getAttribute("data-flag-action");
+        const flagged = [...panel.querySelectorAll(".flag-chip.is-flagged")].map(c => c.getAttribute("data-gid"));
+        row.classList.add("is-done");
+        if (action === "whole" || flagged.length === 0) {
+          sendSwipe(outfitId, "no");
+        } else {
+          sendSwipe(outfitId, "no", flagged);
+          regenerateAroundKept(outfitId, flagged);
+        }
+        return;
+      }
       const btn = e.target.closest(".swipe-btn");
-      if (!btn) return;
+      if (!btn || btn.disabled) return;
       const row = btn.closest(".swipe-row");
       if (!row || row.classList.contains("is-done")) return;
       const outfitId = row.getAttribute("data-outfit-id");
       const signal = btn.getAttribute("data-signal");
       if (!outfitId || !signal) return;
-      // Optimistic: lock the row, mark the chosen button, then fire-and-forget.
+      if (signal === "no") {
+        // Thumbs-down opens the per-garment flag panel instead of locking.
+        openFlagPanel(row, outfitId);
+        return;
+      }
+      // "yes": optimistic lock, mark the chosen button, fire-and-forget.
       row.querySelectorAll(".swipe-btn").forEach(b => b.classList.remove("is-active"));
       btn.classList.add("is-active");
       row.classList.add("is-done");
       sendSwipe(outfitId, signal);
     });
+
+    // -------- Inc 4: regenerate around the kept pieces (#114) --------
+    // Re-runs /api/stylist for the same occasion, locking the pieces the user
+    // kept and rejecting the ones they flagged. Stylist surface only — the
+    // Today's Outfit card has no occasion to re-run (parity handled in #115).
+    async function regenerateAroundKept(outfitId, rejectedIds) {
+      const meta = outfitFeedbackRegistry.get(String(outfitId));
+      if (!meta || meta.surface !== "stylist" || !meta.occasion) return;
+      const rejectedSet = new Set(rejectedIds.map(String));
+      const keepIds = meta.items.map(it => it.id).filter(id => !rejectedSet.has(id));
+      const { lookbook, step, note } = stylistEls();
+      if (!lookbook) return;
+      lookbook.setAttribute("aria-busy", "true");
+      const loadingText = (i18n[state.lang] || i18n.en).stylist_loading || "Pulling a look together…";
+      lookbook.innerHTML = `<div style="text-align:center; padding:48px 18px;"><p style="font-size:14px; color:var(--ink-mid); margin:0;">${loadingText}</p></div>`;
+      try {
+        const r = await fetch(STYLIST_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+          body: JSON.stringify({
+            occasion: meta.occasion,
+            keep_garment_ids: keepIds,
+            rejected_garment_ids: rejectedIds
+          })
+        });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
+        stylistState.outfit = j;
+        renderStylistResult(lookbook, step, note, j);
+      } catch (err) {
+        renderStylistError(lookbook, step, note, err.message || String(err), meta.occasion);
+      } finally {
+        lookbook.removeAttribute("aria-busy");
+      }
+    }
 
     function stylistEls() {
       const root = document.querySelector('section[data-screen="stylist-result"]');
@@ -4856,6 +5029,13 @@
       const reasoningEsc = String(reasoning).replace(/&/g, "&amp;").replace(/</g, "&lt;");
       const colorMod = COLOR_MODS[0 % COLOR_MODS.length];
       const outfitId = payload && payload.outfit_id;
+
+      // Register pieces + occasion so a thumbs-down can flag specific garments (#113/#114).
+      registerOutfitFeedback(outfitId, items.map((it) => {
+        const g = closetById.get(String(it.garment_id));
+        const cat = (g && (g.subcategory || g.category)) || (it.role || "Piece");
+        return { garment_id: it.garment_id, label: String(cat).replace(/^./, c => c.toUpperCase()), role: it.role };
+      }), occasion, "stylist");
 
       lookbook.innerHTML = `
         <div class="look">

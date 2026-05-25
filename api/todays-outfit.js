@@ -279,6 +279,7 @@ export default async function handler(req, res) {
   return res.status(200).json({
     date: today,
     outfit_id: outfitRow?.id ?? null,
+    occasion: outfitRow?.occasion ?? null,
     outfit: {
       items: hydratedItems,
       reasoning: reasoningText,

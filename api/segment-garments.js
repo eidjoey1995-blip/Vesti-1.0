@@ -27,6 +27,13 @@ NAMING RULES (apply to subcategory and description):
 - Pattern or material is welcome if clearly visible: "striped white shirt", "linen trousers", "cable-knit jumper". Default to color + type when not obvious.
 - Fabric/fiber: describe only what is visually apparent — weave, texture, or construction (e.g. "cable-knit", "denim", "corduroy"). Do not assert a fiber name (cotton, linen, wool, polyester) unless the weave or texture makes it unambiguous from the image alone.
 
+CATEGORY RULES (for bottoms — choose carefully):
+- "jeans": ONLY use for denim — visible denim weave, contrast topstitching, rivets, or a faded/washed indigo look. Dark colour alone is NOT enough.
+- "chinos": cotton twill casual trousers, flat front, no denim weave — typically beige, navy, olive, stone.
+- "pants": all other trousers — tailored, pleated, checked/plaid/striped, or any dress trouser. When a non-denim bottom does not clearly read as casual chinos, default to "pants".
+- "shorts": any bottom ending above the knee.
+- If a bottom is patterned (check, plaid, striped) it is almost never "jeans" — denim is effectively always solid.
+
 Return JSON only, no other text. Format:
 {
   "garments": [

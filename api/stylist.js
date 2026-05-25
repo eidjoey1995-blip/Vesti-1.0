@@ -17,7 +17,13 @@ import Anthropic from "@anthropic-ai/sdk";
 // Auth: Authorization: Bearer <supabase_access_token>
 // user_id is resolved from the JWT — not accepted in the body.
 //
-// Request: POST { occasion: string }
+// Request: POST {
+//   occasion: string,
+//   avoid_garment_ids?: (number|string)[],   // recently worn — soft rotation hint
+//   keep_garment_ids?: (number|string)[],    // pieces the user locked — MUST appear in result
+//   rejected_garment_ids?: (number|string)[] // pieces the user disliked — MUST NOT appear
+// }
+// keep/rejected power per-garment "try again with the rest" regeneration.
 // Response 200: {
 //   outfit_id,            // uuid of persisted row in `outfits` (null if persistence failed)
 //   outfit: { items: [{garment_id, role}], reasoning },
@@ -192,7 +198,9 @@ OUTPUT RULES:
 - Aim for one top, one bottom, one shoe, and optionally one layer + one accessory (3-5 items total).
 - Prefer pieces whose formality_score and fabric weight fit the occasion + city.
 - If the closet lacks something essential (e.g. no shoes), pick the closest substitute and name the gap explicitly in reasoning.
-- ROTATION: If a list of recently-worn garment ids is provided, prefer different garments so the user sees variety day to day. Only repeat a recently-worn piece when the closet has no suitable alternative for the occasion — appropriateness always beats novelty, but when good alternatives exist, rotate.`;
+- ROTATION: If a list of recently-worn garment ids is provided, prefer different garments so the user sees variety day to day. Only repeat a recently-worn piece when the closet has no suitable alternative for the occasion — appropriateness always beats novelty, but when good alternatives exist, rotate.
+- LOCKED PIECES: If a list of locked garment ids is provided, the user has explicitly kept those pieces from a previous outfit. You MUST include every locked id in your items exactly as given. Build the rest of the outfit around them — fill only the remaining roles with fresh picks that work with the locked pieces. Never drop or substitute a locked piece.
+- REJECTED PIECES: If a list of rejected garment ids is provided, the user disliked those pieces in a previous attempt. Never include a rejected id in your items, even if it would otherwise be a strong pick.`;
 }
 
 const anthropic = new Anthropic({
@@ -259,7 +267,7 @@ export default async function handler(req, res) {
   const { userId, err: authErr } = await resolveUser(req, supabase);
   if (authErr) return res.status(401).json({ error: authErr });
 
-  const { occasion, avoid_garment_ids } = req.body || {};
+  const { occasion, avoid_garment_ids, keep_garment_ids, rejected_garment_ids } = req.body || {};
   if (!occasion || typeof occasion !== "string" || occasion.trim().length === 0) {
     return res.status(400).json({ error: { code: "missing_occasion", message: "occasion is required" } });
   }
@@ -267,6 +275,17 @@ export default async function handler(req, res) {
   // Normalize avoid list — soft preference only; model still sees full closet.
   const avoidIds = Array.isArray(avoid_garment_ids)
     ? avoid_garment_ids.map((id) => String(id)).filter(Boolean)
+    : [];
+
+  // keep_garment_ids: pieces the user explicitly kept from a previous outfit —
+  // the model MUST include these. rejected_garment_ids: pieces the user flagged
+  // as wrong on a thumbs-down — the model must NOT include these. Both power
+  // the per-garment "try again with the rest" regeneration flow.
+  const keepIds = Array.isArray(keep_garment_ids)
+    ? [...new Set(keep_garment_ids.map((id) => String(id)).filter(Boolean))]
+    : [];
+  const rejectedIds = Array.isArray(rejected_garment_ids)
+    ? [...new Set(rejected_garment_ids.map((id) => String(id)).filter(Boolean))]
     : [];
 
   // Profile read — city is the codex overlay key. Non-fatal if missing.
@@ -333,6 +352,12 @@ export default async function handler(req, res) {
   if (avoidIds.length > 0) {
     userMessageParts.push(`\nRecently worn (last few days), rotate away from these where possible: ${JSON.stringify(avoidIds)}`);
   }
+  if (keepIds.length > 0) {
+    userMessageParts.push(`\nLocked pieces — the user kept these from a previous outfit. You MUST include every one of these ids in your items: ${JSON.stringify(keepIds)}`);
+  }
+  if (rejectedIds.length > 0) {
+    userMessageParts.push(`\nRejected pieces — the user disliked these. Do NOT include any of these ids in your items: ${JSON.stringify(rejectedIds)}`);
+  }
   const userMessage = userMessageParts.join("\n");
 
   const weatherLine = weather
@@ -360,14 +385,42 @@ export default async function handler(req, res) {
 
   // Validate model output: drop any garment_id not in the closet (hallucination guard).
   const closetIds = new Set(garments.map((g) => String(g.id)));
+  const rejectedSet = new Set(rejectedIds);
   const rawItems = Array.isArray(parsed?.items) ? parsed.items : [];
   const items = [];
+  const seenIds = new Set();
   for (const it of rawItems) {
     if (!it || typeof it !== "object") continue;
     const gid = it.garment_id != null ? String(it.garment_id) : null;
     if (!gid || !closetIds.has(gid)) continue;
+    // Hard guard: never let a rejected piece through, even if the model picked it.
+    if (rejectedSet.has(gid)) continue;
+    if (seenIds.has(gid)) continue;
+    seenIds.add(gid);
     const role = typeof it.role === "string" ? it.role : null;
     items.push({ garment_id: gid, role });
+  }
+
+  // Locked-piece guarantee: any kept id the model dropped is re-inserted so the
+  // user's explicit keep is always honored. Role is recovered from the garment
+  // category where possible (top/bottom/shoe), else left null.
+  if (keepIds.length > 0) {
+    const garmentById = new Map(garments.map((g) => [String(g.id), g]));
+    const roleFromCategory = (cat) => {
+      const c = (cat || "").toLowerCase();
+      if (["shoes", "sneakers", "boots"].includes(c)) return "shoe";
+      if (["pants", "jeans", "chinos", "shorts"].includes(c)) return "bottom";
+      if (["jacket", "blazer", "coat", "sweater"].includes(c)) return "layer";
+      if (["shirt", "tshirt", "polo"].includes(c)) return "top";
+      if (c === "accessory") return "accessory";
+      return null;
+    };
+    for (const kid of keepIds) {
+      if (!closetIds.has(kid) || seenIds.has(kid)) continue;
+      seenIds.add(kid);
+      const g = garmentById.get(kid);
+      items.push({ garment_id: kid, role: roleFromCategory(g?.category) });
+    }
   }
   // Belt-and-suspenders: strip any internal jargon Claude leaked into user-facing text.
   const rawReasoning = typeof parsed?.reasoning === "string" ? parsed.reasoning : "";

@@ -4495,12 +4495,11 @@
       const swipeEl = document.getElementById("today-outfit-swipe");
       if (swipeEl) swipeEl.innerHTML = swipeRowHTML(data?.outfit_id);
 
-      // Register pieces so a thumbs-down can flag specific garments (#113).
-      // surface "today": feedback is captured but not regenerated here (#115).
+      // Register pieces so a thumbs-down can flag specific garments (#113/#115).
       registerOutfitFeedback(data?.outfit_id, items.map(item => {
         const cat = (item.subcategory || item.category || "Piece");
         return { garment_id: item.id != null ? item.id : item.garment_id, label: String(cat).replace(/^./, c => c.toUpperCase()) };
-      }), null, "today");
+      }), data?.occasion || null, "today");
     }
 
     async function loadTodaysOutfit(force = false) {
@@ -4906,15 +4905,50 @@
       sendSwipe(outfitId, signal);
     });
 
-    // -------- Inc 4: regenerate around the kept pieces (#114) --------
+    // -------- Inc 4/5: regenerate around the kept pieces (#114/#115) --------
     // Re-runs /api/stylist for the same occasion, locking the pieces the user
-    // kept and rejecting the ones they flagged. Stylist surface only — the
-    // Today's Outfit card has no occasion to re-run (parity handled in #115).
+    // kept and rejecting the ones they flagged. Works on both the stylist
+    // result and the Today's Outfit card (both register an occasion).
     async function regenerateAroundKept(outfitId, rejectedIds) {
       const meta = outfitFeedbackRegistry.get(String(outfitId));
-      if (!meta || meta.surface !== "stylist" || !meta.occasion) return;
+      if (!meta || !meta.occasion) return;
       const rejectedSet = new Set(rejectedIds.map(String));
       const keepIds = meta.items.map(it => it.id).filter(id => !rejectedSet.has(id));
+      const reqBody = JSON.stringify({
+        occasion: meta.occasion,
+        keep_garment_ids: keepIds,
+        rejected_garment_ids: rejectedIds
+      });
+
+      if (meta.surface === "today") {
+        // Today's Outfit card: re-run the stylist, hydrate items against the
+        // closet (the stylist endpoint returns ids only), re-render the card.
+        _showTodaysOutfitState("loading");
+        try {
+          await loadCloset();
+          const r = await fetch(STYLIST_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: reqBody
+          });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
+          const closetById = new Map((closetState.garments || []).map(g => [String(g.id), g]));
+          const hydrated = ((j.outfit && j.outfit.items) || [])
+            .map(it => closetById.get(String(it.garment_id)) || { id: it.garment_id });
+          _renderTodaysOutfit({
+            outfit_id: j.outfit_id,
+            occasion: meta.occasion,
+            outfit: { items: hydrated, reasoning: (j.outfit && j.outfit.reasoning) || "" }
+          });
+          _showTodaysOutfitState("content");
+        } catch (err) {
+          _showTodaysOutfitState("error", err.message || String(err));
+        }
+        return;
+      }
+
+      // Stylist result surface.
       const { lookbook, step, note } = stylistEls();
       if (!lookbook) return;
       lookbook.setAttribute("aria-busy", "true");
@@ -4924,11 +4958,7 @@
         const r = await fetch(STYLIST_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-          body: JSON.stringify({
-            occasion: meta.occasion,
-            keep_garment_ids: keepIds,
-            rejected_garment_ids: rejectedIds
-          })
+          body: reqBody
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));

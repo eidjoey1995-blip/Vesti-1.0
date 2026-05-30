@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 // POST /api/update-garment
 // Auth: Authorization: Bearer <supabase_access_token>
 // Body: { garment_id, updates: { name?, category?, sub_category?, color?,
-//                                formality_score?, pattern? } }
+//                                formality_score?, pattern?, fabric? } }
 //
 // Verifies ownership, then updates only the allowed fields.
 // Server-controlled fields (id, user_id, thumb_url, bbox,
@@ -70,6 +70,14 @@ export default async function handler(req, res) {
   const VALID_PATTERNS = new Set(["solid", "striped", "check", "plaid", "printed", "other"]);
   if (typeof updates.pattern === "string" && VALID_PATTERNS.has(updates.pattern)) {
     patch.pattern = updates.pattern;
+  }
+  const VALID_FABRICS = new Set([
+    "cotton", "linen", "wool", "cashmere", "denim",
+    "leather", "suede", "silk", "synthetic", "other"
+  ]);
+  if (typeof updates.fabric === "string" && VALID_FABRICS.has(updates.fabric)) {
+    patch.fabric = updates.fabric;
+    patch.fabric_confirmed = true; // user-confirmed via edit panel
   }
 
   if (Object.keys(patch).length === 0) {

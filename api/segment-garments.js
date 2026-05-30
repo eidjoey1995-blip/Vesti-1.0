@@ -15,7 +15,7 @@ For every garment you see, return:
 - color: primary color in plain English (e.g. "navy", "white", "olive green")
 - pattern: one of "solid", "striped", "check", "plaid", "printed", "other"
 - formality_score: integer 1-5 where 1=loungewear/athletic, 3=casual everyday, 5=formal/suit territory
-- description: one sentence describing the garment itself — color, type, and visible material or pattern only
+- description: 2-5 words, color + garment type only. NOT a sentence. Examples: "navy linen shirt", "tan leather loafers", "dark grey wool trousers", "white cable-knit sweater".
 - bbox: TIGHT bounding box hugging only this garment — no surrounding fabric, no background pixels, no overlap with neighboring items. Err on the side of cropping slightly inside the garment edge rather than including any exterior pixels. Normalized floats 0.0–1.0: {"x": left, "y": top, "w": width, "h": height} where x+w<=1 and y+h<=1. Origin (0,0) is top-left.
 
 NAMING RULES (apply to subcategory and description):
@@ -33,6 +33,13 @@ CATEGORY RULES (for bottoms — choose carefully):
 - "pants": all other trousers — tailored, pleated, checked/plaid/striped, or any dress trouser. When a non-denim bottom does not clearly read as casual chinos, default to "pants".
 - "shorts": any bottom ending above the knee.
 - If a bottom is patterned (check, plaid, striped) it is almost never "jeans" — denim is effectively always solid.
+
+CATEGORY RULES (for tops — distinguish carefully):
+- "shirt": button-down shirts ONLY. Must have a visible full-length button placket down the front AND a structured collar (point, spread, button-down, or cutaway). Woven fabric, not knit. Oxfords, dress shirts, casual button-downs, linen shirts, denim shirts all = "shirt".
+- "tshirt": pullover knit tops with NO front buttons. Crew neck, v-neck, scoop, or boat neck. Knit jersey fabric. Henleys (1-3 buttons partway down the neck, no full placket) also count as "tshirt".
+- "polo": short or long-sleeve knit collared top with a SHORT button placket at the neck only (typically 2-3 buttons). Has a collar but the placket does NOT run full length.
+- "sweater": knit pullover or cardigan, thicker knit than a tshirt — cable-knit, ribbed, fine merino, etc. If it has a full-length zip or button placket but is clearly knit (not woven), still "sweater" (not "shirt" or "jacket").
+- Decision rule when unsure: full-length button placket down the front = "shirt". No placket = "tshirt". Short placket only at neck = "polo". Knit construction overrides woven assumptions — a knit pullover with no buttons is "tshirt" or "sweater", never "shirt".
 
 Return JSON only, no other text. Format:
 {

@@ -4351,49 +4351,52 @@
     };
     // Sub-section definitions per filter tab.
     // Ordered: first match per garment wins; last entry (empty matches) is the fallback bucket.
+    // `category` here is the REAL category value persisted to the DB (matches
+    // segment-garments output + get-gaps terms). UI groups (tops/bottoms/etc.)
+    // are display-only and must NEVER be written to garments.category.
     const SUBCAT_MAP = {
       tops: [
-        { key: "subcat_tshirts",    matches: ["t-shirt", "tee", "tank"] },
-        { key: "subcat_shirts",     matches: ["shirt", "button-down", "oxford"] },
-        { key: "subcat_polos",      matches: ["polo"] },
-        { key: "subcat_knits",      matches: ["jumper", "sweater", "knit", "cardigan", "pullover", "turtleneck"] },
-        { key: "subcat_other_tops", matches: [] },
+        { key: "subcat_tshirts",    matches: ["t-shirt", "tee", "tank"],                                          category: "tshirt" },
+        { key: "subcat_shirts",     matches: ["shirt", "button-down", "oxford"],                                  category: "shirt" },
+        { key: "subcat_polos",      matches: ["polo"],                                                            category: "polo" },
+        { key: "subcat_knits",      matches: ["jumper", "sweater", "knit", "cardigan", "pullover", "turtleneck"], category: "sweater" },
+        { key: "subcat_other_tops", matches: [],                                                                  category: "tshirt" },
       ],
       bottoms: [
-        { key: "subcat_jeans",         matches: ["jean", "denim"] },
-        { key: "subcat_chinos",        matches: ["chino"] },
-        { key: "subcat_trousers",      matches: ["trouser", "pant", "slack"] },
-        { key: "subcat_shorts",        matches: ["short"] },
-        { key: "subcat_skirts",        matches: ["skirt"] },
-        { key: "subcat_other_bottoms", matches: [] },
+        { key: "subcat_jeans",         matches: ["jean", "denim"],            category: "jeans" },
+        { key: "subcat_chinos",        matches: ["chino"],                    category: "chinos" },
+        { key: "subcat_trousers",      matches: ["trouser", "pant", "slack"], category: "pants" },
+        { key: "subcat_shorts",        matches: ["short"],                    category: "shorts" },
+        { key: "subcat_skirts",        matches: ["skirt"],                    category: "pants" },
+        { key: "subcat_other_bottoms", matches: [],                           category: "pants" },
       ],
       outer: [
-        { key: "subcat_jackets",     matches: ["jacket"] },
-        { key: "subcat_coats",       matches: ["coat", "trench"] },
-        { key: "subcat_blazers",     matches: ["blazer"] },
-        { key: "subcat_cardigans",   matches: ["cardigan"] },
-        { key: "subcat_other_outer", matches: [] },
+        { key: "subcat_jackets",     matches: ["jacket"],         category: "jacket" },
+        { key: "subcat_coats",       matches: ["coat", "trench"], category: "coat" },
+        { key: "subcat_blazers",     matches: ["blazer"],         category: "blazer" },
+        { key: "subcat_cardigans",   matches: ["cardigan"],       category: "sweater" },
+        { key: "subcat_other_outer", matches: [],                 category: "jacket" },
       ],
       suits: [
-        { key: "subcat_suit_jackets",  matches: ["suit jacket"] },
-        { key: "subcat_suit_trousers", matches: ["suit trouser", "suit pant"] },
-        { key: "subcat_other_suits",   matches: [] },
+        { key: "subcat_suit_jackets",  matches: ["suit jacket"],                category: "blazer" },
+        { key: "subcat_suit_trousers", matches: ["suit trouser", "suit pant"], category: "pants" },
+        { key: "subcat_other_suits",   matches: [],                             category: "blazer" },
       ],
       shoes: [
-        { key: "subcat_sneakers",    matches: ["sneaker", "trainer"] },
-        { key: "subcat_loafers",     matches: ["loafer", "moccasin"] },
-        { key: "subcat_boots",       matches: ["boot"] },
-        { key: "subcat_dress_shoes", matches: ["oxford", "derby", "brogue", "dress shoe"] },
-        { key: "subcat_heels",       matches: ["heel", "pump", "stiletto"] },
-        { key: "subcat_sandals",     matches: ["sandal", "flip-flop", "slide"] },
-        { key: "subcat_other_shoes", matches: [] },
+        { key: "subcat_sneakers",    matches: ["sneaker", "trainer"],                       category: "sneakers" },
+        { key: "subcat_loafers",     matches: ["loafer", "moccasin"],                       category: "shoes" },
+        { key: "subcat_boots",       matches: ["boot"],                                     category: "boots" },
+        { key: "subcat_dress_shoes", matches: ["oxford", "derby", "brogue", "dress shoe"], category: "shoes" },
+        { key: "subcat_heels",       matches: ["heel", "pump", "stiletto"],                category: "shoes" },
+        { key: "subcat_sandals",     matches: ["sandal", "flip-flop", "slide"],            category: "shoes" },
+        { key: "subcat_other_shoes", matches: [],                                          category: "shoes" },
       ],
       acc: [
-        { key: "subcat_belts",     matches: ["belt"] },
-        { key: "subcat_ties",      matches: ["tie", "bow tie"] },
-        { key: "subcat_scarves",   matches: ["scarf"] },
-        { key: "subcat_bags",      matches: ["bag", "tote", "briefcase", "backpack"] },
-        { key: "subcat_other_acc", matches: [] },
+        { key: "subcat_belts",     matches: ["belt"],                                  category: "accessory" },
+        { key: "subcat_ties",      matches: ["tie", "bow tie"],                        category: "accessory" },
+        { key: "subcat_scarves",   matches: ["scarf"],                                 category: "accessory" },
+        { key: "subcat_bags",      matches: ["bag", "tote", "briefcase", "backpack"], category: "accessory" },
+        { key: "subcat_other_acc", matches: [],                                       category: "accessory" },
       ],
     };
 
@@ -5352,7 +5355,8 @@
       _editSubSelect.innerHTML = sections.map(s => {
         const label = d[s.key] || s.key;
         const sel = selectedSubcat && label.toLowerCase() === selectedSubcat.toLowerCase() ? " selected" : "";
-        return `<option value="${label}"${sel}>${label}</option>`;
+        const cat = s.category || "";
+        return `<option value="${label}" data-category="${cat}"${sel}>${label}</option>`;
       }).join("");
     }
 
@@ -5422,10 +5426,14 @@
         const updates = {};
         const newName = _editNameInput.value.trim();
         if (newName) updates.name = newName;
-        const newCat = _editCatSelect.value;
-        if (newCat) updates.category = newCat;
+        // Derive REAL category (shirt/tshirt/pants/etc.) from the selected
+        // sub-option's data-category. The visible category dropdown is a UI
+        // group (tops/bottoms/...) and must NEVER be written to the DB.
         const newSubcat = _editSubSelect.value;
         if (newSubcat) updates.sub_category = newSubcat;
+        const subOpt = _editSubSelect && _editSubSelect.selectedOptions && _editSubSelect.selectedOptions[0];
+        const realCat = subOpt && subOpt.dataset && subOpt.dataset.category;
+        if (realCat) updates.category = realCat;
         const newColor = _editColorInput.value.trim();
         if (newColor) updates.color = newColor;
         const activeBtn = _editFormalityGroup && _editFormalityGroup.querySelector(".edit-formality-btn.is-active");

@@ -4802,7 +4802,7 @@
     }
 
     // -------- Profile settings wiring (daily register + display name) --------
-    const profileSettingsState = { loaded: false, loading: false, display_name: null };
+    const profileSettingsState = { loaded: false, loading: false, first_name: null };
 
     function setDailyRegisterUI(value) {
       const sel = document.getElementById("daily-register-selector");
@@ -4812,10 +4812,10 @@
       });
     }
 
-    // Apply display_name everywhere it appears: profile input, profile name tile,
+    // Apply first_name everywhere it appears: profile input, profile name tile,
     // profile avatar initial, and closet H1 ("Your closet" → "Joey's closet").
     function applyFirstNameUI(name) {
-      profileSettingsState.display_name = name || null;
+      profileSettingsState.first_name = name || null;
       const input = document.getElementById("profile-first-name-input");
       if (input && document.activeElement !== input) input.value = name || "";
 
@@ -4847,7 +4847,7 @@
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
         setDailyRegisterUI(j?.profile?.daily_register || "smart-casual");
-        applyFirstNameUI(j?.profile?.display_name || null);
+        applyFirstNameUI(j?.profile?.first_name || null);
         profileSettingsState.loaded = true;
       } catch (err) {
         console.warn("loadDailyRegister error:", err.message);
@@ -4862,18 +4862,18 @@
       const saveFirstName = async () => {
         const raw = _firstNameInput.value || "";
         const trimmed = raw.trim().slice(0, 40);
-        if (trimmed === (profileSettingsState.display_name || "")) return; // no-op
+        if (trimmed === (profileSettingsState.first_name || "")) return; // no-op
         applyFirstNameUI(trimmed || null); // optimistic
         try {
           const r = await fetch("/api/update-profile", {
             method: "POST",
             headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-            body: JSON.stringify({ display_name: trimmed }),
+            body: JSON.stringify({ first_name: trimmed }),
           });
           const j = await r.json().catch(() => ({}));
-          if (!r.ok) console.warn("update-profile (display_name) failed:", j?.error?.message);
+          if (!r.ok) console.warn("update-profile (first_name) failed:", j?.error?.message);
         } catch (err) {
-          console.warn("update-profile (display_name) error:", err.message);
+          console.warn("update-profile (first_name) error:", err.message);
         }
       };
       _firstNameInput.addEventListener("blur", saveFirstName);
@@ -5623,7 +5623,7 @@
       if (!session || !session.user) return;
       const email = session.user.email || "";
       const fallback = email.split("@")[0] || email;
-      const savedName = (typeof profileSettingsState !== "undefined") ? profileSettingsState.display_name : null;
+      const savedName = (typeof profileSettingsState !== "undefined") ? profileSettingsState.first_name : null;
       const name = (savedName && savedName.trim()) ? savedName.trim() : fallback;
       const initial = (name.charAt(0) || "·").toUpperCase();
       document.querySelectorAll('[data-i18n="profile_name"]').forEach(el => { el.textContent = name; });

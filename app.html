@@ -1970,24 +1970,30 @@
     <defs>
       <!-- ============== SHARED / WOMEN'S BASE ============== -->
 
-      <!-- Short-sleeve button-down shirt: clear sleeves, collar, centered buttons, no pocket -->
+      <!-- Long-sleeve dress shirt: full sleeves to cuffs, collar, centered buttons, no pocket -->
       <symbol id="g-shirt" viewBox="0 0 50 60">
-        <path d="M19 13 L25 17 L31 13 L37 13 L46 22 L42 27 L38 24 L38 54 L12 54 L12 24 L8 27 L4 22 L13 13 Z"
+        <!-- Body + long sleeves down to cuffs (single outline) -->
+        <path d="M19 13 L25 17 L31 13 L37 13 L48 20 L44 48 L38 46 L38 56 L12 56 L12 46 L6 48 L2 20 L13 13 Z"
               fill="#F2EDE4" stroke="#2A2A24" stroke-width="0.9" stroke-linejoin="round"/>
+        <!-- Armhole seams -->
+        <path d="M13 13 L12 22 L12 46" fill="none" stroke="#2A2A24" stroke-width="0.4"/>
+        <path d="M37 13 L38 22 L38 46" fill="none" stroke="#2A2A24" stroke-width="0.4"/>
+        <!-- Cuffs -->
+        <rect x="2" y="46" width="6" height="3" fill="#FAF7F2" stroke="#2A2A24" stroke-width="0.4"/>
+        <rect x="42" y="46" width="6" height="3" fill="#FAF7F2" stroke="#2A2A24" stroke-width="0.4"/>
+        <circle cx="5"  cy="47.5" r="0.4" fill="#2A2A24"/>
+        <circle cx="45" cy="47.5" r="0.4" fill="#2A2A24"/>
         <!-- Collar -->
         <path d="M19 13 L22 17 L25 22 L28 17 L31 13"
               fill="#FAF7F2" stroke="#2A2A24" stroke-width="0.8" stroke-linejoin="round"/>
         <!-- Center placket -->
-        <line x1="25" y1="22" x2="25" y2="54" stroke="#2A2A24" stroke-width="0.5"/>
+        <line x1="25" y1="22" x2="25" y2="55" stroke="#2A2A24" stroke-width="0.5"/>
         <!-- Buttons evenly spaced -->
         <circle cx="25" cy="28" r="0.55" fill="#2A2A24"/>
         <circle cx="25" cy="34" r="0.55" fill="#2A2A24"/>
         <circle cx="25" cy="40" r="0.55" fill="#2A2A24"/>
         <circle cx="25" cy="46" r="0.55" fill="#2A2A24"/>
         <circle cx="25" cy="52" r="0.55" fill="#2A2A24"/>
-        <!-- Sleeve cuff hint -->
-        <line x1="8" y1="27" x2="12" y2="24" stroke="#2A2A24" stroke-width="0.4"/>
-        <line x1="42" y1="27" x2="38" y2="24" stroke="#2A2A24" stroke-width="0.4"/>
       </symbol>
 
       <!-- Tailored trousers (cleaner waistband, belt loops, fly, crease) -->
@@ -5453,6 +5459,9 @@
           // Keep closetState in sync so the tile reflects the correction.
           const idx = closetState.garments.findIndex(x => x.id === g.id);
           if (idx !== -1) closetState.garments[idx] = { ...closetState.garments[idx], ...g };
+
+          // Invalidate gaps cache so re-categorisation is reflected next time the Gaps tab opens.
+          gapsState.loaded = false;
 
           populateItemDetail(g);   // re-renders view and calls exitEditMode()
         } catch (err) {

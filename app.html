@@ -3208,6 +3208,13 @@
             </div>
 
             <div class="settings-card">
+              <div class="settings-row settings-row--stacked">
+                <div>
+                  <span class="settings-row-label" data-i18n="set_first_name">Your name</span>
+                  <div class="settings-row-hint" data-i18n="set_first_name_hint">First name only — used to personalise the app.</div>
+                </div>
+                <input id="profile-first-name-input" class="edit-input" type="text" autocomplete="given-name" maxlength="40" placeholder="—" />
+              </div>
               <div class="settings-row" data-goto="language-picker">
                 <span class="settings-row-label" data-i18n="set_language">Language</span>
                 <div class="settings-row-right">
@@ -3809,6 +3816,8 @@
         path4_time: "Roadmap · in partnership talks",
         section_settings: "Settings",
         set_language: "Language",
+        set_first_name: "Your name",
+        set_first_name_hint: "First name only — used to personalise the app.",
         set_daily_style: "Daily style",
         set_daily_style_hint: "Changes take effect tomorrow.",
         daily_style_casual: "Casual",
@@ -4065,6 +4074,8 @@
         path3_time: "قريباً · ٣ شركاء مفعّلين",
         section_settings: "الإعدادات",
         set_language: "اللغة",
+        set_first_name: "اسمك",
+        set_first_name_hint: "الاسم الأول فقط — يُستخدم لتخصيص التطبيق.",
         set_daily_style: "الأسلوب اليومي",
         set_daily_style_hint: "يسري التغيير من الغد.",
         daily_style_casual: "كاجوال",
@@ -4790,8 +4801,8 @@
       }
     }
 
-    // -------- Daily register wiring --------
-    const dailyRegisterState = { loaded: false, loading: false };
+    // -------- Profile settings wiring (daily register + first name) --------
+    const profileSettingsState = { loaded: false, loading: false, first_name: null };
 
     function setDailyRegisterUI(value) {
       const sel = document.getElementById("daily-register-selector");
@@ -4801,21 +4812,74 @@
       });
     }
 
+    // Apply first_name everywhere it appears: profile input, profile name tile,
+    // profile avatar initial, and closet H1 ("Your closet" → "Joey's closet").
+    function applyFirstNameUI(name) {
+      profileSettingsState.first_name = name || null;
+      const input = document.getElementById("profile-first-name-input");
+      if (input && document.activeElement !== input) input.value = name || "";
+
+      const displayName = name && name.trim() ? name.trim() : _fallbackNameFromSession();
+      const initial = (displayName.charAt(0) || "·").toUpperCase();
+      document.querySelectorAll('[data-i18n="profile_name"]').forEach(el => { el.textContent = displayName; });
+      document.querySelectorAll('[data-i18n="profile_avatar"]').forEach(el => { el.textContent = initial; });
+
+      const closetH = document.querySelector('[data-i18n="closet_h"]');
+      if (closetH) {
+        closetH.textContent = (name && name.trim())
+          ? `${name.trim()}'s closet.`
+          : "Your closet.";
+      }
+    }
+
+    function _fallbackNameFromSession() {
+      const s = window._vesti_session;
+      const email = (s && s.user && s.user.email) || "";
+      return email.split("@")[0] || email || "";
+    }
+
     async function loadDailyRegister(force = false) {
-      if (dailyRegisterState.loaded && !force) return;
-      if (dailyRegisterState.loading) return;
-      dailyRegisterState.loading = true;
+      if (profileSettingsState.loaded && !force) return;
+      if (profileSettingsState.loading) return;
+      profileSettingsState.loading = true;
       try {
         const r = await fetch("/api/update-profile", { headers: getAuthHeaders() });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
         setDailyRegisterUI(j?.profile?.daily_register || "smart-casual");
-        dailyRegisterState.loaded = true;
+        applyFirstNameUI(j?.profile?.first_name || null);
+        profileSettingsState.loaded = true;
       } catch (err) {
         console.warn("loadDailyRegister error:", err.message);
       } finally {
-        dailyRegisterState.loading = false;
+        profileSettingsState.loading = false;
       }
+    }
+
+    // First-name input — save on blur (and Enter).
+    const _firstNameInput = document.getElementById("profile-first-name-input");
+    if (_firstNameInput) {
+      const saveFirstName = async () => {
+        const raw = _firstNameInput.value || "";
+        const trimmed = raw.trim().slice(0, 40);
+        if (trimmed === (profileSettingsState.first_name || "")) return; // no-op
+        applyFirstNameUI(trimmed || null); // optimistic
+        try {
+          const r = await fetch("/api/update-profile", {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ first_name: trimmed }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) console.warn("update-profile (first_name) failed:", j?.error?.message);
+        } catch (err) {
+          console.warn("update-profile (first_name) error:", err.message);
+        }
+      };
+      _firstNameInput.addEventListener("blur", saveFirstName);
+      _firstNameInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); _firstNameInput.blur(); }
+      });
     }
 
     const _dailyRegisterSelector = document.getElementById("daily-register-selector");
@@ -5553,14 +5617,23 @@
 
     // Overwrite the profile tile with live session data so the persona/i18n
     // demo values ("Karim", "Leila") are never visible to real users.
+    // If a saved first_name has loaded, applyFirstNameUI() owns the name slot;
+    // we only fall back to the email prefix here as a placeholder.
     function patchProfileFromSession(session) {
       if (!session || !session.user) return;
       const email = session.user.email || "";
-      const name = email.split("@")[0] || email;
-      const initial = name.charAt(0).toUpperCase();
+      const fallback = email.split("@")[0] || email;
+      const savedName = (typeof profileSettingsState !== "undefined") ? profileSettingsState.first_name : null;
+      const name = (savedName && savedName.trim()) ? savedName.trim() : fallback;
+      const initial = (name.charAt(0) || "·").toUpperCase();
       document.querySelectorAll('[data-i18n="profile_name"]').forEach(el => { el.textContent = name; });
       document.querySelectorAll('[data-i18n="profile_avatar"]').forEach(el => { el.textContent = initial; });
       document.querySelectorAll('[data-i18n="profile_city"]').forEach(el => { el.textContent = email; });
+      // Closet H1 — personalise if we have a saved name; otherwise leave i18n default.
+      const closetH = document.querySelector('[data-i18n="closet_h"]');
+      if (closetH && savedName && savedName.trim()) closetH.textContent = `${savedName.trim()}'s closet.`;
+      // Kick off a profile fetch so first_name lands ASAP (not only when Profile tab opens).
+      if (typeof loadDailyRegister === "function") loadDailyRegister();
     }
 
     function applyI18n(lang) {

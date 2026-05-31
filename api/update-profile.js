@@ -1,11 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
 // =========================================================
-// GET  /api/update-profile   → { profile: { daily_register } }
+// GET  /api/update-profile   → { profile: { daily_register, first_name } }
 // POST /api/update-profile   → { ok: true }
 // Auth: Authorization: Bearer <supabase_access_token>
 //
-// POST body: { daily_register?: "casual"|"smart-casual"|"business" }
+// POST body: {
+//   daily_register?: "casual"|"smart-casual"|"business",
+//   first_name?:     string (1-40 chars, trimmed; empty string clears)
+// }
 // Strict whitelist — unknown fields are silently ignored, not written.
 //
 // Env vars:
@@ -14,6 +17,7 @@ import { createClient } from "@supabase/supabase-js";
 // =========================================================
 
 const VALID_DAILY_REGISTER = new Set(["casual", "smart-casual", "business"]);
+const FIRST_NAME_MAX = 40;
 
 async function resolveUser(req, supabase) {
   const auth = (req.headers.authorization || "").trim();
@@ -53,7 +57,7 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const { data, error: readErr } = await supabase
       .from("profiles")
-      .select("daily_register")
+      .select("daily_register, first_name")
       .eq("id", userId)
       .maybeSingle();
 
@@ -62,7 +66,10 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      profile: { daily_register: data?.daily_register || "smart-casual" }
+      profile: {
+        daily_register: data?.daily_register || "smart-casual",
+        first_name:     data?.first_name      || null
+      }
     });
   }
 
@@ -72,6 +79,12 @@ export default async function handler(req, res) {
 
   if (typeof body.daily_register === "string" && VALID_DAILY_REGISTER.has(body.daily_register)) {
     patch.daily_register = body.daily_register;
+  }
+
+  if (typeof body.first_name === "string") {
+    const trimmed = body.first_name.trim().slice(0, FIRST_NAME_MAX);
+    // Empty string explicitly clears the name.
+    patch.first_name = trimmed.length === 0 ? null : trimmed;
   }
 
   if (Object.keys(patch).length === 0) {

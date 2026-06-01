@@ -669,11 +669,94 @@
       overflow-x: auto;
     }
     .closet-filters::-webkit-scrollbar { display: none; }
+    /* Bulk-select toggle row */
+    .closet-select-row {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0 24px 8px;
+    }
+    .closet-select-toggle {
+      background: transparent;
+      border: none;
+      padding: 4px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-mid);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .closet-select-toggle.is-active {
+      color: var(--ink);
+    }
     .closet-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       padding: 0 24px;
+    }
+    /* Selected tile state — used in bulk-select mode */
+    .closet-tile.is-selected {
+      outline: 3px solid var(--ink);
+      outline-offset: -3px;
+    }
+    .closet-tile.is-selected::before {
+      content: "";
+      position: absolute;
+      top: 8px; right: 8px;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--ink);
+      z-index: 3;
+      background-image:
+        linear-gradient(45deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%),
+        linear-gradient(-45deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%);
+      background-size: 60% 60%;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    /* Bulk-delete floating action bar */
+    .closet-bulk-bar {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--ink);
+      color: #fff;
+      border-radius: 999px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+      font-size: 13px;
+    }
+    .closet-bulk-bar[hidden] { display: none; }
+    .closet-bulk-count {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 0 4px;
+    }
+    .closet-bulk-cancel, .closet-bulk-delete {
+      background: transparent;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .closet-bulk-delete {
+      background: #c14a3a;
+      border-color: #c14a3a;
+    }
+    .closet-bulk-delete:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     .closet-tile {
       aspect-ratio: 1;
@@ -2815,6 +2898,11 @@
               <div class="chip" data-i18n="filter_acc" data-filter="acc">Accessories</div>
             </div>
 
+            <!-- Bulk-select toggle (right-aligned, sits above the grid) -->
+            <div class="closet-select-row">
+              <button type="button" class="closet-select-toggle" id="closet-select-toggle" data-i18n="closet_select">Select</button>
+            </div>
+
             <div class="closet-grid">
               <!-- BETA: closet tile brand labels stripped. Static text empty; persona swap will write empty too. -->
               <div class="closet-tile sage" data-goto="item-detail"><svg viewBox="0 0 50 60"><use href="#g-shirt" data-use-f="#g-shirt" data-use-m="#g-overshirt"/></svg><span class="tile-brand" data-persona-brand="c1"></span></div>
@@ -2830,6 +2918,13 @@
             <div style="text-align:center; padding:18px 24px 8px; font-size:12px; color:var(--ink-mid)" data-i18n="closet_more">Showing 9 of 32 · scroll, filter, edit</div>
             <div style="padding:4px 24px 24px;">
               <button class="btn btn-ghost btn-block" data-i18n="closet_add_garments" onclick="location.href='/onboarding.html?add=true'">Add garments</button>
+            </div>
+
+            <!-- Bulk-delete action bar (shows only when selectMode + ≥1 selected) -->
+            <div class="closet-bulk-bar" id="closet-bulk-bar" hidden>
+              <span class="closet-bulk-count" id="closet-bulk-count">0 selected</span>
+              <button type="button" class="closet-bulk-cancel" id="closet-bulk-cancel" data-i18n="cancel">Cancel</button>
+              <button type="button" class="closet-bulk-delete" id="closet-bulk-delete" data-i18n="bulk_delete">Delete</button>
             </div>
           </section>
 
@@ -3824,6 +3919,11 @@
         set_language: "Language",
         set_first_name: "Your name",
         set_first_name_hint: "First name only — used to personalise the app.",
+        closet_select: "Select",
+        cancel: "Cancel",
+        bulk_delete: "Delete",
+        bulk_selected: "{n} selected",
+        bulk_delete_confirm: "Delete {n} items? This can't be undone.",
         set_daily_style: "Daily style",
         set_daily_style_hint: "Changes take effect tomorrow.",
         daily_style_casual: "Casual",
@@ -4082,6 +4182,11 @@
         set_language: "اللغة",
         set_first_name: "اسمك",
         set_first_name_hint: "الاسم الأول فقط — يُستخدم لتخصيص التطبيق.",
+        closet_select: "تحديد",
+        cancel: "إلغاء",
+        bulk_delete: "حذف",
+        bulk_selected: "{n} مُحدد",
+        bulk_delete_confirm: "حذف {n} عناصر؟ لا يمكن التراجع.",
         set_daily_style: "الأسلوب اليومي",
         set_daily_style_hint: "يسري التغيير من الغد.",
         daily_style_casual: "كاجوال",
@@ -4320,7 +4425,7 @@
     // -------- BETA closet wiring --------
     // Fetches /api/get-closet?email=<onboarding email>, renders tiles, wires item-detail.
     const CLOSET_ENDPOINT = "/api/get-closet";
-    const closetState = { loaded: false, loading: false, garments: [] };
+    const closetState = { loaded: false, loading: false, garments: [], selectMode: false, selectedIds: new Set() };
 
     // Map garment categories → SVG symbol IDs already defined in this file.
     // Claude Vision emits: shirt, tshirt, polo, sweater, jacket, blazer, coat,
@@ -4474,9 +4579,9 @@
     }
 
     function tileLabel(g) {
-      // Brief, non-brand label for the closet tile. Prefer subcategory > category.
-      // Title-case the first word for editorial feel.
-      const raw = (g.subcategory || g.category || "").trim();
+      // Brief, non-brand label for the closet tile. Prefer description (gets
+      // regenerated on edit) > subcategory > category. Title-case for editorial feel.
+      const raw = (g.description || g.subcategory || g.category || "").trim();
       if (!raw) return "";
       return raw.charAt(0).toUpperCase() + raw.slice(1);
     }
@@ -4644,7 +4749,13 @@
       const label = rawLabel
         ? `<span class="tile-brand">${rawLabel.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}</span>`
         : "";
-      return `<div class="closet-tile ${accent}" data-goto="item-detail" data-garment-id="${g.id}">`
+      // In bulk-select mode: omit data-goto so the global navigation handler
+      // doesn't push to item-detail, and mark the tile selected if it's in the set.
+      const inSelect = closetState.selectMode;
+      const isSelected = inSelect && closetState.selectedIds.has(g.id);
+      const goto = inSelect ? "" : ' data-goto="item-detail"';
+      const selClass = isSelected ? " is-selected" : "";
+      return `<div class="closet-tile ${accent}${selClass}"${goto} data-garment-id="${g.id}">`
         + thumb + label + `</div>`;
     }
 
@@ -5332,13 +5443,136 @@
     // Capture clicks on closet tiles (with data-garment-id) to stash the chosen garment
     // BEFORE the delegated data-goto handler runs setScreen("item-detail").
     // Listening in capture phase guarantees we set state first, then setScreen renders.
+    // In bulk-select mode this same handler toggles selection instead of navigating
+    // (renderTile already strips data-goto so navigation never fires).
     document.addEventListener("click", (e) => {
       const tile = e.target.closest(".closet-tile[data-garment-id]");
       if (!tile) return;
       const id = tile.getAttribute("data-garment-id");
+      if (closetState.selectMode) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (closetState.selectedIds.has(id)) {
+          closetState.selectedIds.delete(id);
+          tile.classList.remove("is-selected");
+        } else {
+          closetState.selectedIds.add(id);
+          tile.classList.add("is-selected");
+        }
+        updateBulkBar();
+        return;
+      }
       const g = closetState.garments.find(x => x.id === id);
       if (g) populateItemDetail(g);
     }, true);
+
+    // -------- Bulk-select / bulk-delete wiring --------
+
+    function updateBulkBar() {
+      const bar = document.getElementById("closet-bulk-bar");
+      const count = document.getElementById("closet-bulk-count");
+      const delBtn = document.getElementById("closet-bulk-delete");
+      if (!bar) return;
+      const n = closetState.selectedIds.size;
+      const inMode = closetState.selectMode;
+      bar.hidden = !inMode;
+      if (count) {
+        const d = i18n[state.lang] || i18n.en;
+        const tmpl = d.bulk_selected || "{n} selected";
+        count.textContent = tmpl.replace("{n}", String(n));
+      }
+      if (delBtn) {
+        delBtn.disabled = n === 0;
+        const d = i18n[state.lang] || i18n.en;
+        const label = d.bulk_delete || "Delete";
+        delBtn.textContent = n > 0 ? `${label} (${n})` : label;
+      }
+    }
+
+    function setSelectMode(on) {
+      closetState.selectMode = !!on;
+      if (!on) closetState.selectedIds.clear();
+      const toggle = document.getElementById("closet-select-toggle");
+      if (toggle) {
+        const d = i18n[state.lang] || i18n.en;
+        toggle.classList.toggle("is-active", !!on);
+        toggle.textContent = on ? (d.cancel || "Cancel") : (d.closet_select || "Select");
+      }
+      // Re-render the grid so tiles pick up / drop data-goto and selected state.
+      const grid = document.querySelector('section[data-screen="closet"] .closet-grid');
+      const more = document.querySelector('section[data-screen="closet"] [data-i18n="closet_more"]');
+      if (grid && closetState.garments.length > 0) {
+        renderClosetGrid(grid, more, closetState.garments);
+      }
+      updateBulkBar();
+    }
+
+    (function wireBulkDelete() {
+      const toggle = document.getElementById("closet-select-toggle");
+      const cancel = document.getElementById("closet-bulk-cancel");
+      const delBtn = document.getElementById("closet-bulk-delete");
+
+      if (toggle) {
+        toggle.addEventListener("click", () => setSelectMode(!closetState.selectMode));
+      }
+      if (cancel) {
+        cancel.addEventListener("click", () => setSelectMode(false));
+      }
+      if (delBtn) {
+        delBtn.addEventListener("click", async () => {
+          const ids = Array.from(closetState.selectedIds);
+          if (ids.length === 0) return;
+
+          const d = i18n[state.lang] || i18n.en;
+          const tmpl = d.bulk_delete_confirm || "Delete {n} items? This can't be undone.";
+          if (!window.confirm(tmpl.replace("{n}", String(ids.length)))) return;
+
+          delBtn.disabled = true;
+
+          const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+          const results = await Promise.all(ids.map(id =>
+            fetch("/api/delete-garment", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ garment_id: id })
+            }).then(r => r.ok ? id : null).catch(() => null)
+          ));
+          const deletedIds = new Set(results.filter(Boolean));
+
+          // Remove successfully deleted garments from local cache.
+          closetState.garments = closetState.garments.filter(g => !deletedIds.has(g.id));
+
+          // Exit select mode (also re-renders the grid).
+          setSelectMode(false);
+
+          // Refresh grid + invalidate dependent caches.
+          const grid = document.querySelector('section[data-screen="closet"] .closet-grid');
+          const more = document.querySelector('section[data-screen="closet"] [data-i18n="closet_more"]');
+          if (grid) {
+            if (closetState.garments.length === 0) {
+              const dd = i18n[state.lang] || i18n.en;
+              renderClosetEmpty(grid, more, {
+                headline: dd.closet_empty_h || "Your closet is empty.",
+                body: dd.closet_empty_body || "Add a photo of your clothes to get started.",
+                ctaLabel: dd.closet_add_garments || "Add garments",
+                ctaHref: "/onboarding.html?add=true"
+              });
+            } else {
+              renderClosetGrid(grid, more, closetState.garments);
+            }
+          }
+          gapsState.loaded = false;
+          if (typeof todaysOutfitState !== "undefined") todaysOutfitState.loaded = false;
+
+          // If any deletes failed, surface a brief message.
+          const failed = ids.length - deletedIds.size;
+          if (failed > 0) {
+            console.warn(`bulk-delete: ${failed}/${ids.length} failed`);
+            window.alert(`${failed} item${failed > 1 ? "s" : ""} couldn't be deleted. Please try again.`);
+          }
+        });
+      }
+    })();
 
     // Delete garment handler — wired to the button in item-detail.
     const deleteBtn = document.getElementById("item-delete-btn");

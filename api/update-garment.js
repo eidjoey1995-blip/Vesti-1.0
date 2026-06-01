@@ -15,6 +15,17 @@ import { createClient } from "@supabase/supabase-js";
 //   SUPABASE_SERVICE_KEY
 // =========================================================
 
+// Builds a 2-3 word display label from current attrs, e.g. "beige cotton shirt".
+// Skips fabric when null/empty/"other" so we don't get awkward "blue other shirt".
+function buildLabel(color, fabric, category) {
+  const parts = [];
+  if (color    && String(color).trim())    parts.push(String(color).trim().toLowerCase());
+  const fab = fabric && String(fabric).trim().toLowerCase();
+  if (fab && fab !== "other") parts.push(fab);
+  if (category && String(category).trim()) parts.push(String(category).trim().toLowerCase());
+  return parts.join(" ");
+}
+
 async function resolveUser(req, supabase) {
   const auth = (req.headers.authorization || "").trim();
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -60,7 +71,8 @@ export default async function handler(req, res) {
 
   // Map client field names to DB column names; strip server-controlled fields.
   const patch = {};
-  if (typeof updates.name === "string" && updates.name.trim()) patch.description = updates.name.trim();
+  const userTypedName = typeof updates.name === "string" && updates.name.trim().length > 0;
+  if (userTypedName) patch.description = updates.name.trim();
   if (typeof updates.category === "string" && updates.category.trim()) patch.category = updates.category.trim();
   if (typeof updates.sub_category === "string" && updates.sub_category.trim()) patch.subcategory = updates.sub_category.trim();
   if (typeof updates.color === "string" && updates.color.trim()) patch.color = updates.color.trim();
@@ -84,10 +96,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: { code: "no_valid_updates", message: "No updatable fields provided" } });
   }
 
-  // Verify ownership.
+  // Verify ownership AND fetch current values so we can regenerate the
+  // description label when color/fabric/category change without a custom name.
   const { data: existing, error: fetchErr } = await supabase
     .from("garments")
-    .select("id, user_id")
+    .select("id, user_id, color, fabric, category")
     .eq("id", garment_id)
     .single();
 
@@ -96,6 +109,22 @@ export default async function handler(req, res) {
   }
   if (existing.user_id !== userId) {
     return res.status(403).json({ error: { code: "forbidden", message: "Garment not owned by this user" } });
+  }
+
+  // If the user didn't type a custom name but changed any of the attributes
+  // that the displayed label is built from, regenerate description from the
+  // resulting attrs. Without this, "Beige LINEN Shirt" stays on the tile
+  // even after the user corrects fabric to cotton.
+  const attrChanged = patch.color !== undefined || patch.fabric !== undefined || patch.category !== undefined;
+  if (!userTypedName && attrChanged) {
+    const nextColor    = patch.color    ?? existing.color;
+    const nextFabric   = patch.fabric   ?? existing.fabric;
+    const nextCategory = patch.category ?? existing.category;
+    const label = buildLabel(nextColor, nextFabric, nextCategory);
+    if (label) {
+      patch.description = label;
+      patch.subcategory = label; // legacy tile fallback also reads this
+    }
   }
 
   const { data: updated, error: updateErr } = await supabase

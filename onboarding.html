@@ -204,6 +204,101 @@
       z-index: 100;
     }
     .toast.show { opacity: 1; }
+
+    /* ---------- photo guide (step-guide) ---------- */
+    .guide-intro {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0 0 16px;
+    }
+    .guide-card {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    .guide-illust {
+      width: 96px;
+      height: 72px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #f1ede5;
+    }
+    .guide-illust svg { display: block; width: 100%; height: 100%; }
+    .guide-text { min-width: 0; }
+    .guide-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .guide-badge.best { background: #e3efe6; color: #2f7a4a; }
+    .guide-badge.good { background: #f4e9d6; color: #8a5a1a; }
+    .guide-badge.skip { background: #f5dada; color: #a43030; }
+    .guide-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--ink);
+      margin: 0 0 2px;
+    }
+    .guide-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    /* ---------- inline tips on step-upload ---------- */
+    .upload-tips {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin: 0 0 14px;
+      overflow: hidden;
+    }
+    .upload-tips > summary {
+      list-style: none;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .upload-tips > summary::-webkit-details-marker { display: none; }
+    .upload-tips > summary::after {
+      content: "+";
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 400;
+    }
+    .upload-tips[open] > summary::after { content: "−"; }
+    .upload-tips-body {
+      padding: 4px 14px 12px;
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .upload-tips-body p { margin: 10px 0 0; }
+    .upload-tips-body strong { font-weight: 600; }
+    .upload-tips-body .tip-best { color: #2f7a4a; }
+    .upload-tips-body .tip-good { color: #8a5a1a; }
+    .upload-tips-body .tip-skip { color: #a43030; }
   </style>
   <!-- PWA / Install -->
   <link rel="manifest" href="/manifest.json">
@@ -235,6 +330,85 @@
       <button class="btn full" id="btnContinue">Continue</button>
     </section>
 
+    <!-- STEP 1.5: photo guide — shown after city, before upload -->
+    <section id="step-guide" class="step">
+      <h1>How to photograph your closet</h1>
+      <p class="guide-intro">Vesti reads garments best when they're easy to separate. Three options, best to skip:</p>
+
+      <div class="guide-card">
+        <div class="guide-illust">
+          <svg viewBox="0 0 96 72" xmlns="http://www.w3.org/2000/svg">
+            <!-- T-shirt top-left -->
+            <path d="M8 14 L12 10 L18 8 L26 8 L32 10 L36 14 L34 20 L31 18 L31 32 L13 32 L13 18 L10 20 Z" fill="#fff" stroke="#2A2A24" stroke-width="0.8" stroke-linejoin="round"/>
+            <!-- Pants top-right -->
+            <path d="M56 8 L78 8 L77 18 L76 32 L70 32 L68 20 L66 32 L60 32 L59 18 Z" fill="#5a6a7d" stroke="#2A2A24" stroke-width="0.8" stroke-linejoin="round"/>
+            <!-- Sweater bottom-left -->
+            <path d="M6 44 L11 40 L17 38 L27 38 L33 40 L38 44 L36 50 L33 48 L33 62 L11 62 L11 48 L8 50 Z" fill="#a48b5e" stroke="#2A2A24" stroke-width="0.8" stroke-linejoin="round"/>
+            <!-- Shoe pair bottom-right -->
+            <ellipse cx="60" cy="54" rx="8" ry="4" fill="#8b6f47" stroke="#2A2A24" stroke-width="0.7"/>
+            <ellipse cx="78" cy="54" rx="8" ry="4" fill="#8b6f47" stroke="#2A2A24" stroke-width="0.7"/>
+          </svg>
+        </div>
+        <div class="guide-text">
+          <span class="guide-badge best">Best</span>
+          <p class="guide-title">Flat-lay</p>
+          <p class="guide-desc">Lay 3–6 garments on a bed or floor with gaps between them. Daylight overhead works best.</p>
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <div class="guide-illust">
+          <svg viewBox="0 0 96 72" xmlns="http://www.w3.org/2000/svg">
+            <!-- Mirror frame -->
+            <rect x="32" y="4" width="32" height="64" rx="3" fill="#fff" stroke="#2A2A24" stroke-width="1"/>
+            <!-- Head -->
+            <circle cx="48" cy="14" r="4" fill="#d4b08c" stroke="#2A2A24" stroke-width="0.6"/>
+            <!-- Shirt -->
+            <path d="M40 20 L44 18 L46 17 L50 17 L52 18 L56 20 L56 40 L40 40 Z" fill="#4A6B4E" stroke="#2A2A24" stroke-width="0.7" stroke-linejoin="round"/>
+            <!-- Pants -->
+            <path d="M41 40 L55 40 L54 62 L50 62 L48 48 L46 62 L42 62 Z" fill="#2c3a4d" stroke="#2A2A24" stroke-width="0.7" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="guide-text">
+          <span class="guide-badge good">Good</span>
+          <p class="guide-title">Mirror selfie</p>
+          <p class="guide-desc">Wear the outfit, full-body shot in a mirror. Vesti reads top to bottom — works for layered looks.</p>
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <div class="guide-illust">
+          <svg viewBox="0 0 96 72" xmlns="http://www.w3.org/2000/svg">
+            <!-- Rod -->
+            <line x1="6" y1="14" x2="90" y2="14" stroke="#2A2A24" stroke-width="1.5"/>
+            <!-- Hanger hooks -->
+            <path d="M18 14 C18 8 24 8 24 14" fill="none" stroke="#2A2A24" stroke-width="0.6"/>
+            <path d="M30 14 C30 8 36 8 36 14" fill="none" stroke="#2A2A24" stroke-width="0.6"/>
+            <path d="M42 14 C42 8 48 8 48 14" fill="none" stroke="#2A2A24" stroke-width="0.6"/>
+            <path d="M54 14 C54 8 60 8 60 14" fill="none" stroke="#2A2A24" stroke-width="0.6"/>
+            <path d="M66 14 C66 8 72 8 72 14" fill="none" stroke="#2A2A24" stroke-width="0.6"/>
+            <!-- Overlapping shirts (back to front) -->
+            <path d="M10 18 L20 16 L26 18 L28 54 L8 54 Z" fill="#a48b5e" stroke="#2A2A24" stroke-width="0.6" stroke-linejoin="round"/>
+            <path d="M18 18 L28 16 L34 18 L36 54 L16 54 Z" fill="#5a6a7d" stroke="#2A2A24" stroke-width="0.6" stroke-linejoin="round"/>
+            <path d="M26 18 L36 16 L42 18 L44 54 L24 54 Z" fill="#4A6B4E" stroke="#2A2A24" stroke-width="0.6" stroke-linejoin="round"/>
+            <path d="M34 18 L44 16 L50 18 L52 54 L32 54 Z" fill="#7a5a40" stroke="#2A2A24" stroke-width="0.6" stroke-linejoin="round"/>
+            <path d="M42 18 L52 16 L58 18 L60 54 L40 54 Z" fill="#c4a878" stroke="#2A2A24" stroke-width="0.6" stroke-linejoin="round"/>
+            <path d="M50 18 L60 16 L66 18 L68 54 L48 54 Z" fill="#3d4858" stroke="#2A2A24" stroke-width="0.6" stroke-linejoin="round"/>
+            <path d="M58 18 L68 16 L74 18 L76 54 L56 54 Z" fill="#fff" stroke="#2A2A24" stroke-width="0.6" stroke-linejoin="round"/>
+            <!-- Diagonal "no" slash -->
+            <line x1="8" y1="66" x2="88" y2="6" stroke="#a43030" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
+          </svg>
+        </div>
+        <div class="guide-text">
+          <span class="guide-badge skip">Skip for now</span>
+          <p class="guide-title">Hanging rod</p>
+          <p class="guide-desc">Garments overlap too tightly for us to read accurately. We're working on it — for now, lay them out instead.</p>
+        </div>
+      </div>
+
+      <button class="btn full" id="btnGuideContinue" style="margin-top: 14px;">Got it, let's go</button>
+    </section>
+
     <!-- STEP 2: upload + review -->
     <section id="step-upload" class="step">
       <!-- Back button — visible only in ?add=true mode; wired in JS below. -->
@@ -246,6 +420,15 @@
       </div>
       <h1>Your closet, item by item</h1>
       <p class="sub">Add a photo. We'll find the garments. Remove any false hits before saving.</p>
+
+      <details class="upload-tips">
+        <summary>Tips for best results</summary>
+        <div class="upload-tips-body">
+          <p><strong class="tip-best">Best — flat-lay:</strong> lay 3–6 pieces on a bed with gaps between them, daylight overhead.</p>
+          <p><strong class="tip-good">Good — mirror selfie:</strong> full-body in a mirror, wearing the outfit you want catalogued.</p>
+          <p><strong class="tip-skip">Skip — hanging rod:</strong> garments overlap and we can't separate them yet.</p>
+        </div>
+      </details>
 
       <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif" multiple />
       <div id="empty" class="empty">
@@ -459,6 +642,10 @@ $$("#cityChips .chip").forEach(chip => {
 paintCityChips();
 
 $("#btnContinue").addEventListener("click", () => {
+  showStep("step-guide");
+});
+
+$("#btnGuideContinue").addEventListener("click", () => {
   showStep("step-upload");
 });
 

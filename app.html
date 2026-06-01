@@ -2062,15 +2062,21 @@
         <rect x="38" y="28" width="2" height="4" rx="0.4" fill="#5A5A50"/>
       </symbol>
 
-      <!-- Blazer (notched lapel, two-button, breast pocket + handkerchief) -->
+      <!-- Blazer / Jacket (notched lapel, two-button, sleeves, breast pocket + handkerchief) -->
       <symbol id="g-blazer" viewBox="0 0 50 60">
-        <g fill="#4A6B4E" stroke="#2A2A24" stroke-width="0.9" stroke-linejoin="round">
-          <path d="M9 14 L20 7 L30 7 L41 14 L43 53 L7 53 Z"/>
-        </g>
+        <!-- Body + sleeves as a single outline -->
+        <path d="M5 17 L9 14 L20 7 L30 7 L41 14 L45 17 L49 46 L44 46 L42 22 L42 53 L8 53 L8 22 L6 46 L1 46 Z"
+              fill="#4A6B4E" stroke="#2A2A24" stroke-width="0.9" stroke-linejoin="round"/>
+        <!-- Cuff bands -->
+        <line x1="1" y1="44" x2="6" y2="44" stroke="#2A2A24" stroke-width="0.5"/>
+        <line x1="44" y1="44" x2="49" y2="44" stroke="#2A2A24" stroke-width="0.5"/>
+        <!-- Armhole seams -->
+        <path d="M9 14 L8 22" fill="none" stroke="#2A2A24" stroke-width="0.4"/>
+        <path d="M41 14 L42 22" fill="none" stroke="#2A2A24" stroke-width="0.4"/>
         <!-- left lapel -->
-        <path d="M20 7 L23 22 L18 28 L16 53 L18 53 L22 28 L25 22 Z" fill="#5A7B5E" stroke="#2A2A24" stroke-width="0.7"/>
+        <path d="M20 7 L23 22 L18 28 L16 53 L18 53 L22 28 L25 22 Z" fill="#5A7B5E" stroke="#2A2A24" stroke-width="0.7" stroke-linejoin="round"/>
         <!-- right lapel -->
-        <path d="M30 7 L27 22 L32 28 L34 53 L32 53 L28 28 L25 22 Z" fill="#5A7B5E" stroke="#2A2A24" stroke-width="0.7"/>
+        <path d="M30 7 L27 22 L32 28 L34 53 L32 53 L28 28 L25 22 Z" fill="#5A7B5E" stroke="#2A2A24" stroke-width="0.7" stroke-linejoin="round"/>
         <!-- notch -->
         <path d="M22 16 L24 18 L22 19 Z" fill="#4A6B4E"/>
         <path d="M28 16 L26 18 L28 19 Z" fill="#4A6B4E"/>

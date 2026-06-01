@@ -4579,11 +4579,22 @@
     }
 
     function tileLabel(g) {
-      // Brief label for the closet tile. Prefer subcategory (short — "Dress shirt")
-      // over description (verbose AI sentence — "white cotton dress shirt with a
-      // spread collar…"). On edit, update-garment.js writes the short regenerated
-      // label to subcategory too, so the tile updates correctly after edits.
-      const raw = (g.subcategory || g.description || g.category || "").trim();
+      // Build "white cotton shirt" from color + fabric + category. Skip fabric
+      // when null/empty/"other" so we don't get awkward "white other shirt".
+      // We prefer the singular DB `category` over `subcategory` because legacy
+      // rows sometimes stored the UI group name ("Shirts") into subcategory.
+      // Falls back to subcategory / category alone if no color is available.
+      const CAT_DISPLAY = { tshirt: "t-shirt" }; // normalise a couple of awkward category strings
+      const parts = [];
+      if (g.color && String(g.color).trim()) parts.push(String(g.color).trim().toLowerCase());
+      const fab = g.fabric && String(g.fabric).trim().toLowerCase();
+      if (fab && fab !== "other") parts.push(fab);
+      if (g.category && String(g.category).trim()) {
+        const c = String(g.category).trim().toLowerCase();
+        parts.push(CAT_DISPLAY[c] || c);
+      }
+      let raw = parts.join(" ");
+      if (!raw) raw = (g.subcategory || g.category || "").trim();
       if (!raw) return "";
       return raw.charAt(0).toUpperCase() + raw.slice(1);
     }

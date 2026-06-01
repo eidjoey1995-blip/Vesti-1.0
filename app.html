@@ -4579,9 +4579,11 @@
     }
 
     function tileLabel(g) {
-      // Brief, non-brand label for the closet tile. Prefer description (gets
-      // regenerated on edit) > subcategory > category. Title-case for editorial feel.
-      const raw = (g.description || g.subcategory || g.category || "").trim();
+      // Brief label for the closet tile. Prefer subcategory (short — "Dress shirt")
+      // over description (verbose AI sentence — "white cotton dress shirt with a
+      // spread collar…"). On edit, update-garment.js writes the short regenerated
+      // label to subcategory too, so the tile updates correctly after edits.
+      const raw = (g.subcategory || g.description || g.category || "").trim();
       if (!raw) return "";
       return raw.charAt(0).toUpperCase() + raw.slice(1);
     }

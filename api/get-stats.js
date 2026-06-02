@@ -63,7 +63,8 @@ export default async function handler(req, res) {
     supabase
       .from("garments")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
+      .eq("user_id", userId)
+      .is("dupe_of_garment_id", null),    // stat must match what user sees in closet
     supabase
       .from("outfits")
       .select("*", { count: "exact", head: true })

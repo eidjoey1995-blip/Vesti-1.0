@@ -79,6 +79,7 @@ export default async function handler(req, res) {
     .from("garments")
     .select(SELECT_COLUMNS)
     .eq("user_id", userId)
+    .is("dupe_of_garment_id", null)     // hide rows the user has confirmed as duplicates
     .order("created_at", { ascending: false })
     .limit(lim);
 

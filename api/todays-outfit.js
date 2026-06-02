@@ -131,7 +131,8 @@ export default async function handler(req, res) {
     supabase
       .from("garments")
       .select("category")
-      .eq("user_id", userId),
+      .eq("user_id", userId)
+      .is("dupe_of_garment_id", null),    // category coverage check shouldn't count dupes
   ]);
 
   if (cacheResult.error) {

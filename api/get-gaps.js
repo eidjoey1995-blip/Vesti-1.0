@@ -98,7 +98,8 @@ export default async function handler(req, res) {
   const { data, error } = await supabase
     .from("garments")
     .select("category")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .is("dupe_of_garment_id", null);    // dupes shouldn't fill category gaps
 
   if (error) {
     return res.status(500).json({

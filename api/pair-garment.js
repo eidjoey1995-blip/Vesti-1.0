@@ -116,6 +116,7 @@ export default async function handler(req, res) {
     .from("garments")
     .select(GARMENT_COLUMNS)
     .eq("user_id", userId)
+    .is("dupe_of_garment_id", null)        // dupes are invisible to the pairing engine
     .order("created_at", { ascending: false })
     .limit(MAX_CANDIDATES);
 

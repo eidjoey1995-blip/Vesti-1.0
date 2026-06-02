@@ -319,6 +319,7 @@ export default async function handler(req, res) {
       .from("garments")
       .select(GARMENT_COLUMNS)
       .eq("user_id", userId)
+      .is("dupe_of_garment_id", null)        // never style with a confirmed-dupe garment
       .order("created_at", { ascending: false })
       .limit(MAX_GARMENTS),
     fetchWeather(city)

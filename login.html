@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Vesti" />
-  <meta name="theme-color" content="#FAF7F2" />
+  <meta name="theme-color" content="#fafaf7" />
   <title>Vesti — Sign in</title>
   <style>
     :root {
@@ -19,10 +19,7 @@
       --ink: #14110f;
       --muted: #6f6a64;
       --line: #e5e1da;
-      --accent: #14110f;
       --accent-soft: #efeae0;
-      --ok: #2f7a4a;
-      --warn: #b25c1c;
       --err: #a43030;
     }
     * { box-sizing: border-box; }
@@ -31,101 +28,154 @@
       min-height: 100dvh;
       background: var(--bg);
       color: var(--ink);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-      font-size: 16px;
-      line-height: 1.45;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
       -webkit-font-smoothing: antialiased;
+    }
+    body {
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: calc(32px + var(--safe-top)) calc(20px + var(--safe-right)) calc(32px + var(--safe-bottom)) calc(20px + var(--safe-left));
     }
     .wrap {
       width: 100%;
-      max-width: 440px;
-      padding: calc(32px + var(--safe-top)) calc(20px + var(--safe-right)) calc(32px + var(--safe-bottom)) calc(20px + var(--safe-left));
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
     }
-    .wordmark {
-      font-family: "SF Pro Display", -apple-system, serif;
-      font-weight: 600;
-      font-size: 13px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--ink);
+
+    /* ── Header (wordmark + tagline) ── */
+    .header {
+      text-align: center;
       margin-bottom: 32px;
     }
-    h1 {
-      font-family: "SF Pro Display", -apple-system, serif;
+    .wordmark {
+      font-family: "SF Pro Display", -apple-system, sans-serif;
       font-weight: 600;
-      font-size: 26px;
-      margin: 0 0 4px;
-      letter-spacing: -0.01em;
-    }
-    .sub {
-      color: var(--muted);
-      font-size: 15px;
-      margin: 0 0 20px;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 20px;
-    }
-    label.field {
-      display: block;
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 6px;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
-    }
-    input[type="email"] {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      font-size: 16px;
-      background: #fff;
+      font-size: 32px;
+      letter-spacing: -0.02em;
       color: var(--ink);
+      margin: 0 0 8px;
+    }
+    .tagline {
+      font-size: 15px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    /* ── Email + magic link ── */
+    .input-row { margin-bottom: 12px; }
+    .text-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font-size: 15px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: inherit;
       -webkit-appearance: none;
+      transition: border-color .15s ease;
     }
-    input[type="email"]:focus {
-      outline: none;
-      border-color: var(--ink);
-    }
-    input[type="email"].has-error {
-      border-color: var(--err);
-    }
-    .error-text {
-      color: var(--err);
-      font-size: 13px;
-      margin-top: 6px;
-    }
+    .text-input::placeholder { color: var(--muted); }
+    .text-input:focus { outline: none; border-color: var(--ink); }
+    .text-input.has-error { border-color: var(--err); }
+
     .btn {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
       width: 100%;
-      padding: 13px 18px;
-      margin-top: 12px;
-      border-radius: 10px;
+      padding: 15px 20px;
+      border-radius: 12px;
+      font-family: "SF Pro Display", -apple-system, sans-serif;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: opacity .15s ease, background-color .15s ease, color .15s ease;
       border: 1px solid var(--ink);
+    }
+    .btn-primary {
       background: var(--ink);
       color: #fff;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: opacity 0.15s ease;
     }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn.ghost { background: transparent; color: var(--ink); }
-    .sent-text {
-      font-size: 15px;
+    .btn-primary:hover { opacity: 0.92; }
+    .btn-primary:active { opacity: 0.82; }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .btn-outline {
+      background: transparent;
       color: var(--ink);
-      line-height: 1.55;
-      margin: 0 0 4px;
+      border: 1px solid var(--line);
     }
+    .btn-outline:hover { border-color: var(--ink); }
+    .btn-outline:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ── Status caption (success / sending) ── */
+    .status-text {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      margin: 10px 0 0;
+      min-height: 18px;
+    }
+    .status-text.is-err { color: var(--err); }
+
+    /* ── Or divider ── */
+    .or-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 32px 0 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .or-divider::before, .or-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    /* ── 6-box code entry ── */
+    .code-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .code-box {
+      flex: 1;
+      max-width: 50px;
+      height: 56px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "SF Pro Display", -apple-system, sans-serif;
+      font-weight: 600;
+      font-size: 20px;
+      text-align: center;
+      -webkit-appearance: none;
+      transition: border-color .15s ease;
+    }
+    .code-box:focus { outline: none; border-color: var(--ink); }
+    .code-box.has-error { border-color: var(--err); }
+
+    .code-status {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      margin: 0;
+      min-height: 18px;
+    }
+    .code-status.is-err { color: var(--err); }
   </style>
   <!-- PWA / Install -->
   <link rel="manifest" href="/manifest.json">
@@ -140,48 +190,40 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="wordmark">Vesti</div>
-    <h1>Sign in to Vesti</h1>
-    <p class="sub">We'll email you a magic link and a 6-digit code — no password.</p>
 
-    <div class="card">
-
-      <div id="form-section">
-        <label class="field" for="email-input">Email</label>
-        <input type="email" id="email-input"
-               placeholder="you@example.com"
-               autocomplete="email"
-               inputmode="email"
-               spellcheck="false" />
-        <div id="error-msg" class="error-text" hidden></div>
-        <button class="btn" id="submit-btn">Send magic link</button>
-      </div>
-
-      <div id="sent-section" hidden>
-        <p class="sent-text" id="sent-msg"></p>
-        <div class="code-entry" style="margin-top:20px;">
-          <label for="code-input" style="display:block;font-size:13px;color:var(--ink);margin-bottom:8px;font-weight:500;">
-            Or enter the 6-digit code from the email:
-          </label>
-          <input
-            id="code-input"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            autocomplete="one-time-code"
-            maxlength="6"
-            placeholder="123456"
-            style="width:100%;padding:12px;font-size:18px;letter-spacing:6px;text-align:center;border:1px solid #d4cfc4;border-radius:8px;background:#fff;font-family:inherit;"
-          />
-          <button id="verify-btn" type="button" style="width:100%;margin-top:10px;padding:12px;background:var(--forest,#4A6B4E);color:var(--cream,#FAF7F2);border:0;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">
-            Verify code
-          </button>
-          <div id="code-error" style="color:var(--err,#c44);font-size:13px;margin-top:8px;display:none;"></div>
-        </div>
-        <button class="btn ghost" id="resend-btn" disabled style="margin-top:16px;">Resend</button>
-      </div>
-
+    <div class="header">
+      <h1 class="wordmark">Vesti</h1>
+      <p class="tagline">Your wardrobe, styled daily.</p>
     </div>
+
+    <div class="input-row">
+      <input
+        id="email-input"
+        type="email"
+        class="text-input"
+        placeholder="you@email.com"
+        autocomplete="email"
+        inputmode="email"
+        spellcheck="false" />
+    </div>
+
+    <button id="submit-btn" type="button" class="btn btn-primary">Email me a magic link</button>
+    <p id="magic-status" class="status-text" aria-live="polite"></p>
+
+    <div class="or-divider"><span>or</span></div>
+
+    <div class="code-row" role="group" aria-label="6-digit verification code">
+      <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="1" class="code-box" aria-label="Digit 1 of 6" />
+      <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" aria-label="Digit 2 of 6" />
+      <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" aria-label="Digit 3 of 6" />
+      <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" aria-label="Digit 4 of 6" />
+      <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" aria-label="Digit 5 of 6" />
+      <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" aria-label="Digit 6 of 6" />
+    </div>
+
+    <button id="verify-btn" type="button" class="btn btn-outline">Verify code</button>
+    <p id="code-status" class="code-status" aria-live="polite"></p>
+
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -202,46 +244,33 @@
 
       const emailInput  = document.getElementById("email-input");
       const submitBtn   = document.getElementById("submit-btn");
-      const errorMsg    = document.getElementById("error-msg");
-      const formSection = document.getElementById("form-section");
-      const sentSection = document.getElementById("sent-section");
-      const sentMsg     = document.getElementById("sent-msg");
-      const resendBtn   = document.getElementById("resend-btn");
-      const codeInput   = document.getElementById("code-input");
+      const magicStatus = document.getElementById("magic-status");
       const verifyBtn   = document.getElementById("verify-btn");
-      const codeError   = document.getElementById("code-error");
+      const codeStatus  = document.getElementById("code-status");
+      const codeBoxes   = Array.from(document.querySelectorAll(".code-box"));
 
-      // Same pattern used throughout the app
       const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
       let lastEmail   = "";
       let resendTimer = null;
 
-      function esc(str) {
-        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      function setMagicStatus(text, isErr) {
+        magicStatus.textContent = text || "";
+        magicStatus.classList.toggle("is-err", !!isErr);
+        emailInput.classList.toggle("has-error", !!isErr);
       }
 
-      function clearError() {
-        emailInput.classList.remove("has-error");
-        errorMsg.hidden = true;
-        errorMsg.textContent = "";
+      function setCodeStatus(text, isErr) {
+        codeStatus.textContent = text || "";
+        codeStatus.classList.toggle("is-err", !!isErr);
+        codeBoxes.forEach(b => b.classList.toggle("has-error", !!isErr));
       }
 
-      function showError(msg) {
-        emailInput.classList.add("has-error");
-        errorMsg.textContent = msg;
-        errorMsg.hidden = false;
+      function readCode() {
+        return codeBoxes.map(b => b.value || "").join("");
       }
 
-      function showSent(email) {
-        formSection.hidden = true;
-        sentSection.hidden = false;
-        sentMsg.innerHTML =
-          "Check your email — we sent a link and a 6-digit code to <strong>" + esc(email) + "</strong>.";
-        resendBtn.disabled = true;
-        clearTimeout(resendTimer);
-        resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
-        setTimeout(() => codeInput.focus(), 100);
+      function clearCodeBoxes() {
+        codeBoxes.forEach(b => { b.value = ""; b.classList.remove("has-error"); });
       }
 
       async function sendOtp(email) {
@@ -252,54 +281,115 @@
         return error;
       }
 
-      // ---- Submit handler ----
+      // ---- Magic-link button (send + resend on the same button) ----
       submitBtn.addEventListener("click", async () => {
         const email = emailInput.value.trim().toLowerCase();
-        clearError();
+        setMagicStatus("", false);
 
         if (!EMAIL_RE.test(email)) {
-          showError("Please enter a valid email address.");
+          setMagicStatus("Please enter a valid email address.", true);
           return;
         }
 
         submitBtn.disabled = true;
         submitBtn.textContent = "Sending…";
+        setMagicStatus("", false);
 
         const error = await sendOtp(email);
 
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Send magic link";
-
         if (error) {
-          showError(error.message);
-        } else {
-          lastEmail = email;
-          showSent(email);
+          submitBtn.disabled = false;
+          submitBtn.textContent = lastEmail ? "Resend magic link" : "Email me a magic link";
+          setMagicStatus(error.message, true);
+          return;
         }
+
+        lastEmail = email;
+        submitBtn.textContent = "Sent — check your email";
+        setMagicStatus("We sent a link and a 6-digit code.", false);
+
+        // Move focus to the first code box so user can type the code immediately.
+        setTimeout(() => { if (codeBoxes[0]) codeBoxes[0].focus(); }, 80);
+
+        // 30s cooldown then re-enable as "Resend magic link"
+        clearTimeout(resendTimer);
+        resendTimer = setTimeout(() => {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Resend magic link";
+        }, 30000);
       });
 
-      // Enter key triggers submit
+      // Enter inside email field triggers send
       emailInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") submitBtn.click();
       });
 
-      // ---- Verify code handler ----
+      // ---- 6-box code input behavior ----
+      codeBoxes.forEach((box, idx) => {
+        // Digit input: keep only first digit, auto-advance
+        box.addEventListener("input", (e) => {
+          const v = (box.value || "").replace(/\D/g, "");
+          if (v.length === 0) {
+            box.value = "";
+            return;
+          }
+          box.value = v.charAt(0);
+          if (codeBoxes[idx + 1]) {
+            codeBoxes[idx + 1].focus();
+            codeBoxes[idx + 1].select && codeBoxes[idx + 1].select();
+          }
+          // Auto-submit when all 6 boxes are filled
+          if (readCode().length === 6) handleVerify();
+        });
+
+        // Backspace on empty box → focus previous and clear it
+        box.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !box.value && codeBoxes[idx - 1]) {
+            codeBoxes[idx - 1].focus();
+            codeBoxes[idx - 1].value = "";
+            e.preventDefault();
+          } else if (e.key === "ArrowLeft" && codeBoxes[idx - 1]) {
+            codeBoxes[idx - 1].focus();
+            e.preventDefault();
+          } else if (e.key === "ArrowRight" && codeBoxes[idx + 1]) {
+            codeBoxes[idx + 1].focus();
+            e.preventDefault();
+          } else if (e.key === "Enter") {
+            handleVerify();
+          }
+        });
+
+        // Paste anywhere in the row distributes digits across boxes
+        box.addEventListener("paste", (e) => {
+          e.preventDefault();
+          const text = (e.clipboardData || window.clipboardData).getData("text") || "";
+          const digits = text.replace(/\D/g, "").slice(0, 6);
+          if (!digits) return;
+          for (let i = 0; i < 6; i++) {
+            codeBoxes[i].value = digits.charAt(i) || "";
+          }
+          const lastFilled = Math.min(digits.length, 6) - 1;
+          if (codeBoxes[lastFilled + 1]) codeBoxes[lastFilled + 1].focus();
+          else codeBoxes[5].focus();
+          if (digits.length === 6) handleVerify();
+        });
+      });
+
       async function handleVerify() {
-        const code = (codeInput.value || "").trim();
+        const code = readCode();
+        setCodeStatus("", false);
+
         if (!/^\d{6}$/.test(code)) {
-          codeError.textContent = "Enter the 6-digit code from the email.";
-          codeError.style.display = "block";
+          setCodeStatus("Enter the 6-digit code from the email.", true);
           return;
         }
         if (!lastEmail) {
-          codeError.textContent = "Please request a code first.";
-          codeError.style.display = "block";
+          setCodeStatus("Request a magic link first to receive the code.", true);
           return;
         }
 
         verifyBtn.disabled = true;
         verifyBtn.textContent = "Verifying…";
-        codeError.style.display = "none";
 
         try {
           const { data, error } = await sb.auth.verifyOtp({
@@ -322,8 +412,7 @@
             window.location.href = "/onboarding.html";
           }
         } catch (err) {
-          codeError.textContent = err.message || "That code didn't work. Try again or request a new one.";
-          codeError.style.display = "block";
+          setCodeStatus(err.message || "That code didn't work. Try again or request a new one.", true);
           verifyBtn.disabled = false;
           verifyBtn.textContent = "Verify code";
         }
@@ -331,36 +420,8 @@
 
       verifyBtn.addEventListener("click", handleVerify);
 
-      codeInput.addEventListener("input", () => {
-        if (codeInput.value.replace(/\D/g, "").length === 6) handleVerify();
-      });
-
-      codeInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") handleVerify();
-      });
-
-      // ---- Resend handler ----
-      resendBtn.addEventListener("click", async () => {
-        resendBtn.disabled = true;
-        clearTimeout(resendTimer);
-
-        // Remove any previous resend error
-        const prev = sentSection.querySelector(".resend-error");
-        if (prev) prev.remove();
-
-        const error = await sendOtp(lastEmail);
-
-        if (error) {
-          const el = document.createElement("p");
-          el.className = "resend-error";
-          el.style.cssText = "color:var(--err);font-size:13px;margin:8px 0 0;";
-          el.textContent = error.message;
-          resendBtn.insertAdjacentElement("beforebegin", el);
-        }
-
-        // Always reset the 30-second cooldown regardless of outcome
-        resendTimer = setTimeout(() => { resendBtn.disabled = false; }, 30000);
-      });
+      // Focus email on load
+      setTimeout(() => { if (emailInput) emailInput.focus(); }, 60);
     })();
   </script>
   <script>

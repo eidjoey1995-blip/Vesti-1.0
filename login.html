@@ -35,10 +35,35 @@
     }
     body {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: calc(32px + var(--safe-top)) calc(20px + var(--safe-right)) calc(32px + var(--safe-bottom)) calc(20px + var(--safe-left));
+      justify-content: flex-start;
+      padding: calc(24px + var(--safe-top)) calc(20px + var(--safe-right)) calc(32px + var(--safe-bottom)) calc(20px + var(--safe-left));
     }
+
+    /* ── Brand bar (matches landing + onboarding) ── */
+    .brand-bar {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 auto 64px;
+    }
+    .v-mark {
+      width: 30px;
+      height: 30px;
+      color: var(--ink);
+      flex-shrink: 0;
+    }
+    .brand-bar .wordmark-text {
+      font-family: "SF Pro Display", -apple-system, sans-serif;
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
     .wrap {
       width: 100%;
       max-width: 360px;
@@ -46,25 +71,6 @@
       flex-direction: column;
       align-items: stretch;
       gap: 0;
-    }
-
-    /* ── Header (wordmark + tagline) ── */
-    .header {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    .wordmark {
-      font-family: "SF Pro Display", -apple-system, sans-serif;
-      font-weight: 600;
-      font-size: 32px;
-      letter-spacing: -0.02em;
-      color: var(--ink);
-      margin: 0 0 8px;
-    }
-    .tagline {
-      font-size: 15px;
-      color: var(--muted);
-      margin: 0;
     }
 
     /* ── Email + magic link ── */
@@ -189,12 +195,15 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
 </head>
 <body>
-  <div class="wrap">
+  <header class="brand-bar">
+    <svg class="v-mark" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="15" cy="15" r="14" stroke="currentColor" stroke-width="1.25"/>
+      <path d="M9.5 10L15 21L20.5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="wordmark-text">Vesti</span>
+  </header>
 
-    <div class="header">
-      <h1 class="wordmark">Vesti</h1>
-      <p class="tagline">Your wardrobe, styled daily.</p>
-    </div>
+  <div class="wrap">
 
     <div class="input-row">
       <input

@@ -79,6 +79,13 @@ const CITY_OVERLAYS = {
 - Local rules: respect modesty conventions in mixed/family settings. Linen is fine but linen jackets to client meetings are not.
 - Brand availability: Joseph Eid bespoke ships to UAE; Beirut-only retail references should be substituted with Dubai equivalents.`,
 
+  Riyadh: `Riyadh overlay (apply ON TOP of Beirut baseline):
+- Climate: desert, drier and hotter swings than Dubai. Outdoor anything May–Sep is heat-prohibitive; even Oct–Apr afternoons run hot. Default to AC-interior venues year-round. AC-first weight rule: 250–280 g/m² indoors, drop under 250 only for genuine outdoor early-morning or late-evening events. This OVERRIDES the "summer = lighter" rule.
+- Light: high UV, very harsh. Stay one shade darker than Beirut defaults; off-white and stone palettes lift better than pure white in daytime photos.
+- Dress register: MORE formal and conservative than Dubai for equivalent occasions. Full suit + tie is the default for business and most formal social settings. Modesty conventions are stronger — long sleeves, tailored (not skinny) trousers, no exposed ankles in formal contexts.
+- Local rules: thobe is the dominant local male formalwear. Lebanese guests can wear a Western suit for any business context; thobe is optional only if Gulf-regular and own one well. Avoid linen for business meetings. Restraint in color and pattern reads as respect.
+- Brand availability: Joseph Eid has no KSA retail presence; rely on Beirut bespoke shipped or remote fit.`,
+
   "New York": `New York overlay (apply ON TOP of Beirut baseline):
 - Climate: four-season. Wide swing — humid summer (Jun–Aug, Beirut-comparable), genuine cold winter (Dec–Feb, Beirut never gets there). Outerwear becomes load-bearing Nov–Mar. Layering (overshirt over shirt, knit under blazer) is the default move where Beirut would skip the extra layer.
 - Light: cooler, more diffuse than Levantine sun. The "one shade darker" correction does NOT apply — colors render closer to catalog. Mid grey reads as mid grey, not washed-out.
@@ -162,8 +169,8 @@ Weekend brunch:
 A notch above errands: fine-knit polo or short-sleeve linen shirt over chinos in stone/olive, or a crisp plain tee under an unstructured overshirt. Minimalist sneakers or brown loafers. Relaxed but considered — appropriate for being seen socially. No tie, jacket optional.`;
 
 // Build the system prompt for a given city. Beirut overlay is the baseline;
-// Dubai/NY layer on top. Token-efficient: only the relevant city overlay
-// is sent, not all three.
+// Dubai/Riyadh/NY layer on top. Token-efficient: only the relevant city
+// overlay is sent, not all four.
 function buildSystemPrompt(city, weatherLine) {
   const overlay = CITY_OVERLAYS[city] || CITY_OVERLAYS.Beirut;
   return `You are the AI stylist for Vesti, a men's wardrobe app for Lebanese men (and the Lebanese diaspora). You pick outfits from the user's existing closet for a given occasion, grounded in the Vesti methodology reference below.
@@ -176,9 +183,10 @@ ${weatherLine ? weatherLine + "\n\n" : ""}${CODEX_OCCASIONS}
 PRIORITY RULES:
 1. If the city is Beirut, use the matching entry as written.
 2. If Dubai, apply the Dubai overlay on top — climate weight rule is the highest-priority override (AC-first 250 g/m² indoors).
-3. If New York, apply the NY overlay; for occasions outside the Lebanese-cultural set, surface "we don't have a calibrated default for this in your city yet" in reasoning.
-4. When in doubt between Beirut default and city overlay: climate (fabric weight, layering) wins; everything else (color, register) defers to the Beirut entry.
-5. If the user's stated occasion isn't covered above, reason from the closest entry + city overlay. Name the gap in reasoning.
+3. If Riyadh, apply the Riyadh overlay on top — AC-first weight rule (250–280 g/m²) plus a stricter formality/modesty register than Dubai. Lebanese guests default to Western suit; thobe optional only if Gulf-regular.
+4. If New York, apply the NY overlay; for occasions outside the Lebanese-cultural set, surface "we don't have a calibrated default for this in your city yet" in reasoning.
+5. When in doubt between Beirut default and city overlay: climate (fabric weight, layering) wins; everything else (color, register) defers to the Beirut entry.
+6. If the user's stated occasion isn't covered above, reason from the closest entry + city overlay. Name the gap in reasoning.
 
 USER-FACING TONE FOR the reasoning field:
 - Speak directly to the user as their stylist. Plain language. No jargon.

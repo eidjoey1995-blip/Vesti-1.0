@@ -40,6 +40,26 @@
       margin: 0 auto;
       padding: calc(24px + var(--safe-top)) calc(20px + var(--safe-right)) 120px calc(20px + var(--safe-left));
     }
+    /* Brand bar (matches landing + login) */
+    .brand-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 48px;
+    }
+    .brand-bar .v-mark {
+      width: 30px;
+      height: 30px;
+      color: var(--ink);
+      flex-shrink: 0;
+    }
+    .brand-bar .wordmark-text {
+      font-family: "SF Pro Display", -apple-system, sans-serif;
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
     h1 {
       font-family: "SF Pro Display", -apple-system, serif;
       font-weight: 600;
@@ -313,16 +333,25 @@
 </head>
 <body>
   <div class="wrap">
+    <header class="brand-bar">
+      <svg class="v-mark" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="15" cy="15" r="14" stroke="currentColor" stroke-width="1.25"/>
+        <path d="M9.5 10L15 21L20.5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="wordmark-text">Vesti</span>
+    </header>
+
     <!-- STEP 1: city (email replaced by Supabase auth) -->
     <section id="step-identify" class="step active">
       <h1>Welcome to Vesti</h1>
       <p class="sub">Drop in some flatlay photos of your clothes — laid out on the bed or floor. We'll catalog them for you.</p>
       <div class="card">
         <label class="field">Where you're based</label>
-        <!-- BETA cohort: Beirut (7), Dubai (2), NY (1). City informs codex weather/occasion assumptions. -->
-        <div class="row" id="cityChips" style="gap:8px;">
+        <!-- BETA cohort: Beirut (7), Dubai (2), NY (1) + Riyadh option. City informs codex weather/occasion assumptions. -->
+        <div class="row" id="cityChips" style="gap:8px;flex-wrap:wrap;">
           <span class="chip" data-city="Beirut">Beirut</span>
           <span class="chip" data-city="Dubai">Dubai</span>
+          <span class="chip" data-city="Riyadh">Riyadh</span>
           <span class="chip" data-city="New York">New York</span>
         </div>
         <p class="sub" style="margin: 10px 0 0; font-size: 13px;">Used to set climate and dress-code defaults. You can change this later.</p>

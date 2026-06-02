@@ -1,13 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
 // =========================================================
-// GET  /api/update-profile   → { profile: { daily_register, first_name } }
+// GET  /api/update-profile   → { profile: { daily_register, first_name, city } }
 // POST /api/update-profile   → { ok: true }
 // Auth: Authorization: Bearer <supabase_access_token>
 //
 // POST body: {
 //   daily_register?: "casual"|"smart-casual"|"business",
-//   first_name?:     string (1-40 chars, trimmed; empty string clears)
+//   first_name?:     string (1-40 chars, trimmed; empty string clears),
+//   city?:           "Beirut"|"Dubai"|"Riyadh"|"New York"
 // }
 // Strict whitelist — unknown fields are silently ignored, not written.
 //
@@ -17,6 +18,7 @@ import { createClient } from "@supabase/supabase-js";
 // =========================================================
 
 const VALID_DAILY_REGISTER = new Set(["casual", "smart-casual", "business"]);
+const VALID_CITIES = new Set(["Beirut", "Dubai", "Riyadh", "New York"]);
 const FIRST_NAME_MAX = 40;
 
 async function resolveUser(req, supabase) {
@@ -57,7 +59,7 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const { data, error: readErr } = await supabase
       .from("profiles")
-      .select("daily_register, first_name")
+      .select("daily_register, first_name, city")
       .eq("id", userId)
       .maybeSingle();
 
@@ -68,7 +70,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       profile: {
         daily_register: data?.daily_register || "smart-casual",
-        first_name:     data?.first_name      || null
+        first_name:     data?.first_name      || null,
+        city:           data?.city            || "Beirut"
       }
     });
   }
@@ -85,6 +88,10 @@ export default async function handler(req, res) {
     const trimmed = body.first_name.trim().slice(0, FIRST_NAME_MAX);
     // Empty string explicitly clears the name.
     patch.first_name = trimmed.length === 0 ? null : trimmed;
+  }
+
+  if (typeof body.city === "string" && VALID_CITIES.has(body.city)) {
+    patch.city = body.city;
   }
 
   if (Object.keys(patch).length === 0) {

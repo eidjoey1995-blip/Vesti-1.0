@@ -2888,7 +2888,6 @@
               <div class="chip active" data-i18n="filter_all" data-filter="all">All</div>
               <div class="chip" data-i18n="filter_tops" data-filter="tops">Tops</div>
               <div class="chip" data-i18n="filter_bottoms" data-filter="bottoms">Bottoms</div>
-              <div class="chip" data-i18n="filter_dresses" data-filter="suits">Dresses</div>
               <div class="chip" data-i18n="filter_outer" data-filter="outer">Outerwear</div>
               <div class="chip" data-i18n="filter_shoes" data-filter="shoes">Shoes</div>
               <div class="chip" data-i18n="filter_acc" data-filter="acc">Accessories</div>
@@ -3011,7 +3010,6 @@
                     <option value="tops" data-i18n="filter_tops">Tops</option>
                     <option value="bottoms" data-i18n="filter_bottoms">Bottoms</option>
                     <option value="outer" data-i18n="filter_outer">Outerwear</option>
-                    <option value="suits" data-i18n="filter_suits">Suits</option>
                     <option value="shoes" data-i18n="filter_shoes">Shoes</option>
                     <option value="acc" data-i18n="filter_acc">Accessories</option>
                   </select>
@@ -3301,7 +3299,6 @@
             <div class="profile-stats">
               <div class="stat"><div class="stat-num" id="pstat-garments">—</div><div class="stat-label" data-i18n="pstat_garments">Garments</div></div>
               <div class="stat"><div class="stat-num" id="pstat-outfits">—</div><div class="stat-label" data-i18n="pstat_outfits">Outfits</div></div>
-              <div class="stat"><div class="stat-num" id="pstat-days">—</div><div class="stat-label" data-i18n="pstat_days">Days active</div></div>
             </div>
 
             <div class="settings-card">
@@ -3328,6 +3325,18 @@
                   <button type="button" class="edit-formality-btn" data-register="casual"><span data-i18n="daily_style_casual">Casual</span></button>
                   <button type="button" class="edit-formality-btn" data-register="smart-casual"><span data-i18n="daily_style_smart">Smart-casual</span></button>
                   <button type="button" class="edit-formality-btn" data-register="business"><span data-i18n="daily_style_business">Business</span></button>
+                </div>
+              </div>
+              <div class="settings-row settings-row--stacked">
+                <div>
+                  <span class="settings-row-label" data-i18n="set_city">City</span>
+                  <div class="settings-row-hint" data-i18n="set_city_hint">Affects weather and dress register in the stylist.</div>
+                </div>
+                <div id="city-selector" class="edit-formality-group" role="radiogroup" aria-label="City" style="flex-wrap:wrap;">
+                  <button type="button" class="edit-formality-btn" data-city="Beirut"><span data-i18n="city_beirut">Beirut</span></button>
+                  <button type="button" class="edit-formality-btn" data-city="Dubai"><span data-i18n="city_dubai">Dubai</span></button>
+                  <button type="button" class="edit-formality-btn" data-city="Riyadh"><span data-i18n="city_riyadh">Riyadh</span></button>
+                  <button type="button" class="edit-formality-btn" data-city="New York"><span data-i18n="city_ny">New York</span></button>
                 </div>
               </div>
               <div class="settings-row" data-goto="about">
@@ -3823,7 +3832,7 @@
         // Closet
         closet_h: "Your closet.",
         stat_items: "Items", stat_gaps: "Gaps found",
-        filter_all: "All", filter_tops: "Tops", filter_bottoms: "Bottoms", filter_dresses: "Dresses",
+        filter_all: "All", filter_tops: "Tops", filter_bottoms: "Bottoms",
         filter_outer: "Outerwear", filter_shoes: "Shoes", filter_acc: "Accessories",
         closet_more: "Showing 9 of 32 · scroll, filter, edit",
         closet_add_garments: "Add garments",
@@ -3919,7 +3928,7 @@
         prod_5_n: "Woven tote, cream.",
         prod_6_n: "Linen set, olive.",
         // Profile
-        pstat_garments: "Garments", pstat_outfits: "Outfits", pstat_days: "Days active",
+        pstat_garments: "Garments", pstat_outfits: "Outfits",
         profile_eyebrow: "Closet-first",
         profile_h: "How your closet builds.",
         profile_name: "Leila",
@@ -3952,6 +3961,12 @@
         daily_style_casual: "Casual",
         daily_style_smart: "Smart-casual",
         daily_style_business: "Business",
+        set_city: "City",
+        set_city_hint: "Affects weather and dress register in the stylist.",
+        city_beirut: "Beirut",
+        city_dubai: "Dubai",
+        city_riyadh: "Riyadh",
+        city_ny: "New York",
         set_about: "About Vesti",
         about_step: "About",
         about_eyebrow: "Vesti · BETA",
@@ -4102,7 +4117,7 @@
         today_outfit_milestone_next: "أضف {needed} {label} لتكتمل خزانتك.",
         closet_h: "خزانتك.",
         stat_items: "قطعة", stat_gaps: "فجوات",
-        filter_all: "الكل", filter_tops: "أعلى", filter_bottoms: "أسفل", filter_dresses: "فساتين",
+        filter_all: "الكل", filter_tops: "أعلى", filter_bottoms: "أسفل",
         filter_outer: "معاطف", filter_shoes: "أحذية", filter_acc: "إكسسوارات",
         closet_more: "عرض 9 من 32 · مرّر، فلتر، حرّر",
         closet_add_garments: "إضافة ملابس",
@@ -4192,7 +4207,7 @@
         prod_4_n: "عباءة مفتوحة، كريمية.",
         prod_5_n: "حقيبة منسوجة، كريمية.",
         prod_6_n: "طقم كتّان، زيتوني.",
-        pstat_garments: "القطع", pstat_outfits: "التنسيقات", pstat_days: "أيام النشاط",
+        pstat_garments: "القطع", pstat_outfits: "التنسيقات",
         profile_eyebrow: "الخزانة أولاً",
         profile_h: "كيف تُبنى خزانتك.",
         profile_name: "ليلى",
@@ -4222,6 +4237,12 @@
         daily_style_casual: "كاجوال",
         daily_style_smart: "أنيق-كاجوال",
         daily_style_business: "رسمي",
+        set_city: "المدينة",
+        set_city_hint: "تؤثّر على الطقس وأسلوب اللباس في المصمّم.",
+        city_beirut: "بيروت",
+        city_dubai: "دبي",
+        city_riyadh: "الرياض",
+        city_ny: "نيويورك",
         set_about: "عن فيستي",
         about_step: "عن التطبيق",
         about_eyebrow: "فيستي · تجريبي",
@@ -4275,8 +4296,6 @@
       m: {
         en: {
           profile_name: "Karim", profile_avatar: "K", profile_city: "Dubai · 28 items · Pro trial",
-          // Closet filter — no dresses in Karim's view
-          filter_dresses: "Suits",
           // Closet gaps for Karim
           gaps_summary: "<strong>Pattern detected:</strong> you wear the navy suit + white shirt 3× a month with the same trousers. Filling these 4 gaps unlocks 9 new looks across boardroom, brunch, and weekend.",
           gap_1_t: "Navy two-piece suit, MTM.",
@@ -4323,7 +4342,6 @@
         },
         ar: {
           profile_name: "كريم", profile_avatar: "ك", profile_city: "دبي · 28 قطعة · تجربة برو",
-          filter_dresses: "بدلات",
           gaps_summary: "<strong>نمط مكتشف:</strong> ترتدي البدلة الكحلية + القميص الأبيض ٣ مرّات شهرياً مع نفس البنطلون. سدّ هذه الفجوات الأربع يفتح ٩ إطلالات جديدة بين العمل والبرنش والويكند.",
           gap_1_t: "بدلة كحلية، تفصيل خاص.",
           gap_1_w: "ارتديت بدلتك الوحيدة في ٦ من آخر ٨ مناسبات رسمية — وهي صوف. متوسّط حرارة دبي ٣٢° لتسعة أشهر في السنة. بدلة صيفية كحلية تغطّي نفس التقويم بدون الحرارة.",
@@ -4957,10 +4975,8 @@
         if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
         const g = document.getElementById("pstat-garments");
         const o = document.getElementById("pstat-outfits");
-        const d = document.getElementById("pstat-days");
         if (g) g.textContent = String(j.garments_count ?? "—");
         if (o) o.textContent = String(j.outfits_count ?? "—");
-        if (d) d.textContent = String(j.days_active ?? "—");
         statsState.loaded = true;
       } catch (err) {
         console.warn("get-stats error:", err);
@@ -4978,6 +4994,14 @@
       if (!sel) return;
       sel.querySelectorAll(".edit-formality-btn[data-register]").forEach(b => {
         b.classList.toggle("is-active", b.dataset.register === value);
+      });
+    }
+
+    function setCityUI(value) {
+      const sel = document.getElementById("city-selector");
+      if (!sel) return;
+      sel.querySelectorAll(".edit-formality-btn[data-city]").forEach(b => {
+        b.classList.toggle("is-active", b.dataset.city === value);
       });
     }
 
@@ -5016,6 +5040,7 @@
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
         setDailyRegisterUI(j?.profile?.daily_register || "smart-casual");
+        setCityUI(j?.profile?.city || "Beirut");
         applyFirstNameUI(j?.profile?.first_name || null);
         profileSettingsState.loaded = true;
       } catch (err) {
@@ -5068,6 +5093,30 @@
           if (!r.ok) console.warn("update-profile failed:", j?.error?.message);
         } catch (err) {
           console.warn("update-profile error:", err.message);
+        }
+      });
+    }
+
+    const _citySelector = document.getElementById("city-selector");
+    if (_citySelector) {
+      _citySelector.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".edit-formality-btn[data-city]");
+        if (!btn) return;
+        const value = btn.dataset.city;
+        setCityUI(value); // optimistic
+        try {
+          const r = await fetch("/api/update-profile", {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ city: value }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) console.warn("update-profile (city) failed:", j?.error?.message);
+          // City change invalidates today's outfit + gaps (different codex overlay, different weather).
+          try { todaysOutfitState.loaded = false; } catch (_) {}
+          try { gapsState.loaded = false; } catch (_) {}
+        } catch (err) {
+          console.warn("update-profile (city) error:", err.message);
         }
       });
     }

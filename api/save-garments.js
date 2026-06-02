@@ -158,6 +158,42 @@ async function removeBackground(imageUrl) {
   return null;
 }
 
+// =========================================================
+// Dominant-colour extraction for dedup.
+// Run on the final thumbnail buffer (after RMBG / grounded-sam).
+// Resize to 64x64 for speed, drop transparent + near-white +
+// near-black pixels, average the rest. Returns "#rrggbb" or null.
+// Cost: ~5ms per thumb on a warm sharp instance, no token spend.
+// =========================================================
+async function extractDominantHex(buf) {
+  if (!buf) return null;
+  try {
+    const { data } = await sharp(buf)
+      .resize(64, 64, { fit: "inside" })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    let r = 0, g = 0, b = 0, count = 0;
+    for (let p = 0; p < data.length; p += 4) {
+      const a = data[p + 3];
+      if (a < 128) continue;                                   // skip transparent (RMBG bg)
+      const rr = data[p], gg = data[p + 1], bb = data[p + 2];
+      if (rr > 240 && gg > 240 && bb > 240) continue;          // skip near-white (JPEG bg)
+      if (rr < 12  && gg < 12  && bb < 12 ) continue;          // skip near-black noise
+      r += rr; g += gg; b += bb; count++;
+    }
+    if (count === 0) return null;
+    const avgR = Math.round(r / count);
+    const avgG = Math.round(g / count);
+    const avgB = Math.round(b / count);
+    return "#" + [avgR, avgG, avgB].map(n => n.toString(16).padStart(2, "0")).join("");
+  } catch (err) {
+    console.warn("extractDominantHex failed:", err.message);
+    return null;
+  }
+}
+
 async function resolveUser(req, supabase) {
   const auth = (req.headers.authorization || "").trim();
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -243,10 +279,16 @@ async function handleReprocess(req, res, supabase) {
     .from("garment-thumbs")
     .getPublicUrl(fileName);
 
+  // Recompute dominant_hex from the regenerated thumb so dedup stays in sync
+  // with whatever the user just decided the garment actually looks like.
+  const dominantHex = await extractDominantHex(pngBuf);
+
   // Step 6: Write new thumb_url back to the garments row.
+  const updatePatch = { thumb_url: publicUrl };
+  if (dominantHex) updatePatch.dominant_hex = dominantHex;
   const { error: updateErr } = await supabase
     .from("garments")
-    .update({ thumb_url: publicUrl })
+    .update(updatePatch)
     .eq("id", garment_id);
 
   if (updateErr) {
@@ -381,8 +423,9 @@ export default async function handler(req, res) {
             const { data: { publicUrl } } = supabase.storage
               .from("garment-thumbs")
               .getPublicUrl(fileName);
-            console.log(`path=grounded-sam label=${label}`);
-            return [i, publicUrl];
+            const dominantHex = await extractDominantHex(pngBuf);
+            console.log(`path=grounded-sam label=${label} hex=${dominantHex || "—"}`);
+            return [i, { url: publicUrl, hex: dominantHex }];
           }
         }
       } catch (gsamErr) {
@@ -391,10 +434,10 @@ export default async function handler(req, res) {
     }
 
     // FALLBACK: existing bbox crop + RMBG path — logic unchanged.
-    if (!normalizedImgBuf || !_legacyImgReady) return [i, null];
+    if (!normalizedImgBuf || !_legacyImgReady) return [i, { url: null, hex: null }];
 
     const bbox = g.raw_response?.bbox || g.bbox;
-    if (!bbox || typeof bbox.x !== "number") return [i, null];
+    if (!bbox || typeof bbox.x !== "number") return [i, { url: null, hex: null }];
 
     try {
       const imgW = _legacyImgW;
@@ -471,7 +514,6 @@ export default async function handler(req, res) {
         }
       }
 
-      console.log(`path=${legacyPath} label=${label}`);
       const { error: upErr } = await supabase.storage
         .from("garment-thumbs")
         .upload(fileName, finalBuf, { contentType, upsert: false });
@@ -480,16 +522,22 @@ export default async function handler(req, res) {
         const { data: { publicUrl } } = supabase.storage
           .from("garment-thumbs")
           .getPublicUrl(fileName);
-        return [i, publicUrl];
+        const dominantHex = await extractDominantHex(finalBuf);
+        console.log(`path=${legacyPath} label=${label} hex=${dominantHex || "—"}`);
+        return [i, { url: publicUrl, hex: dominantHex }];
       }
-      return [i, null];
+      return [i, { url: null, hex: null }];
     } catch (cropErr) {
       console.warn(`thumb crop failed for garment ${i}:`, cropErr.message);
-      return [i, null];
+      return [i, { url: null, hex: null }];
     }
   }));
 
-  thumbResults.forEach(([i, url]) => { if (url) thumbUrls[i] = url; });
+  const thumbHexes = {};
+  thumbResults.forEach(([i, data]) => {
+    if (data?.url) thumbUrls[i] = data.url;
+    if (data?.hex) thumbHexes[i] = data.hex;
+  });
 
   const rows = garments.map((g, i) => ({
     user_id: userId,
@@ -506,6 +554,7 @@ export default async function handler(req, res) {
     raw_response: g.raw_response ?? g,
     segment_index: i,
     thumb_url: thumbUrls[i] ?? null,
+    dominant_hex: thumbHexes[i] ?? null,
   }));
 
   const { data, error } = await supabase

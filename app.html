@@ -2841,14 +2841,11 @@
             </div>
             <div class="screen-header">
               <h2 class="h1" data-i18n="closet_h">Your closet.</h2>
-              <p class="lead" data-i18n="closet_lead">Built itself from receipts and one bulk photo. Edit anything.</p>
             </div>
 
             <div class="closet-stats">
-              <!-- BETA: Items count populated by loadCloset(); Gaps populated by loadGaps().
-                   "Worn · 30d" stays static until the worn-items log ships post-V1. -->
+              <!-- BETA: Items count populated by loadCloset(); Gaps populated by loadGaps(). -->
               <div class="stat"><div class="stat-num" id="stat-items">—</div><div class="stat-label" data-i18n="stat_items">Items</div></div>
-              <div class="stat"><div class="stat-num">—</div><div class="stat-label" data-i18n="stat_worn">Worn · 30d</div></div>
               <div class="stat" data-goto="closet-gaps"><div class="stat-num" id="stat-gaps">—</div><div class="stat-label" data-i18n="stat_gaps">Gaps found</div></div>
             </div>
 
@@ -3333,15 +3330,7 @@
                   <button type="button" class="edit-formality-btn" data-register="business"><span data-i18n="daily_style_business">Business</span></button>
                 </div>
               </div>
-              <div class="settings-row">
-                <span class="settings-row-label" data-i18n="set_notifications">Notifications</span>
-                <span class="settings-chev">›</span>
-              </div>
-              <div class="settings-row">
-                <span class="settings-row-label" data-i18n="set_help">Help &amp; feedback</span>
-                <span class="settings-chev">›</span>
-              </div>
-              <div class="settings-row">
+              <div class="settings-row" data-goto="about">
                 <span class="settings-row-label" data-i18n="set_about">About Vesti</span>
                 <span class="settings-chev">›</span>
               </div>
@@ -3653,6 +3642,43 @@
             </div>
           </section>
 
+          <!-- =========================================== ABOUT VESTI -->
+          <section class="screen" data-screen="about">
+            <div class="screen-top">
+              <button class="icon-btn" data-goto="profile" aria-label="Back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <div class="micro" data-i18n="about_step">About</div>
+              <div style="width:36px"></div>
+            </div>
+
+            <div class="screen-header">
+              <p class="h-eyebrow" data-i18n="about_eyebrow">Vesti · BETA</p>
+              <h2 class="h1" data-i18n="about_h">About Vesti.</h2>
+              <p class="lead" data-i18n="about_lead">Vesti is your AI stylist — it learns your wardrobe, your city, and how you like to dress, then tells you what to wear each day.</p>
+            </div>
+
+            <div style="padding:0 24px;">
+              <div class="card" style="margin-bottom:12px;">
+                <p class="h-eyebrow" data-i18n="about_p1_h">Built for the way you actually live.</p>
+                <p style="font-size:13px; color:var(--ink-mid); line-height:1.6; margin:0;" data-i18n="about_p1_b">Heat, humidity, calendar, what's clean, what fits — Vesti weighs the same things you'd weigh if you had the time. The result is one outfit, ready to go.</p>
+              </div>
+              <div class="card">
+                <p class="h-eyebrow" data-i18n="about_p2_h">Your closet, your call.</p>
+                <p style="font-size:13px; color:var(--ink-mid); line-height:1.6; margin:0;" data-i18n="about_p2_b">Everything is editable. Thumbs up or down trains the stylist, never to your face, never out loud — it just gets quieter about pieces you don't reach for.</p>
+              </div>
+
+              <div style="padding:24px 0 8px; text-align:center;">
+                <p style="font-size:12px; color:var(--ink-mid); line-height:1.6; margin:0 0 6px;" data-i18n="about_credits">Made in Beirut. Joseph Eid bespoke menswear is the founding partner.</p>
+                <p style="font-size:11px; color:var(--ink-mid); letter-spacing:0.08em; text-transform:uppercase; margin:0;" data-i18n="about_version">BETA · v0.1</p>
+              </div>
+
+              <div class="spacer"></div>
+              <button class="btn btn-ghost btn-block" data-goto="profile" data-i18n="about_cta">Back to profile</button>
+              <div style="height:24px"></div>
+            </div>
+          </section>
+
         </div><!-- /screens -->
 
         <!-- Bottom tab nav -->
@@ -3796,8 +3822,7 @@
         today_outfit_milestone_next: "Add {needed} more {label} to round out your wardrobe.",
         // Closet
         closet_h: "Your closet.",
-        closet_lead: "Built itself from receipts and one bulk photo. Edit anything.",
-        stat_items: "Items", stat_worn: "Worn · 30d", stat_gaps: "Gaps found",
+        stat_items: "Items", stat_gaps: "Gaps found",
         filter_all: "All", filter_tops: "Tops", filter_bottoms: "Bottoms", filter_dresses: "Dresses",
         filter_outer: "Outerwear", filter_shoes: "Shoes", filter_acc: "Accessories",
         closet_more: "Showing 9 of 32 · scroll, filter, edit",
@@ -3927,9 +3952,18 @@
         daily_style_casual: "Casual",
         daily_style_smart: "Smart-casual",
         daily_style_business: "Business",
-        set_notifications: "Notifications",
-        set_help: "Help & feedback",
         set_about: "About Vesti",
+        about_step: "About",
+        about_eyebrow: "Vesti · BETA",
+        about_h: "About Vesti.",
+        about_lead: "Vesti is your AI stylist — it learns your wardrobe, your city, and how you like to dress, then tells you what to wear each day.",
+        about_p1_h: "Built for the way you actually live.",
+        about_p1_b: "Heat, humidity, calendar, what's clean, what fits — Vesti weighs the same things you'd weigh if you had the time. The result is one outfit, ready to go.",
+        about_p2_h: "Your closet, your call.",
+        about_p2_b: "Everything is editable. Thumbs up or down trains the stylist, never to your face, never out loud — it just gets quieter about pieces you don't reach for.",
+        about_credits: "Made in Beirut.",
+        about_version: "BETA · v0.1",
+        about_cta: "Back to profile",
         lang_english: "English",
         lang_arabic: "العربية",
         set_modesty: "Modesty preferences",
@@ -4067,8 +4101,7 @@
         today_outfit_milestone_full: "الخزانة مكتملة — جميع القطع الأساسية موجودة.",
         today_outfit_milestone_next: "أضف {needed} {label} لتكتمل خزانتك.",
         closet_h: "خزانتك.",
-        closet_lead: "بُنيت من الإيصالات وصورة مجمّعة واحدة. كل شيء قابل للتعديل.",
-        stat_items: "قطعة", stat_worn: "اُرتديت · 30 يوم", stat_gaps: "فجوات",
+        stat_items: "قطعة", stat_gaps: "فجوات",
         filter_all: "الكل", filter_tops: "أعلى", filter_bottoms: "أسفل", filter_dresses: "فساتين",
         filter_outer: "معاطف", filter_shoes: "أحذية", filter_acc: "إكسسوارات",
         closet_more: "عرض 9 من 32 · مرّر، فلتر، حرّر",
@@ -4189,9 +4222,18 @@
         daily_style_casual: "كاجوال",
         daily_style_smart: "أنيق-كاجوال",
         daily_style_business: "رسمي",
-        set_notifications: "الإشعارات",
-        set_help: "المساعدة والملاحظات",
         set_about: "عن فيستي",
+        about_step: "عن التطبيق",
+        about_eyebrow: "فيستي · تجريبي",
+        about_h: "عن فيستي.",
+        about_lead: "فيستي مصمّمك الذكي — يتعلّم خزانتك ومدينتك وأسلوبك، ثم يقترح ما ترتديه كل يوم.",
+        about_p1_h: "مصنوع لحياتك الفعلية.",
+        about_p1_b: "الحرارة والرطوبة والمواعيد وما هو نظيف وما يلائمك — فيستي يوازن كل ما كنت ستوازنه بنفسك لو توفّر الوقت. النتيجة: إطلالة واحدة جاهزة.",
+        about_p2_h: "خزانتك، قرارك.",
+        about_p2_b: "كل شيء قابل للتعديل. الإعجاب أو الرفض يُدرّب المصمّم بهدوء، دون إحراج، فقط يقلّ ذكر القطع التي لا ترتديها.",
+        about_credits: "صُنع في بيروت.",
+        about_version: "تجريبي · v0.1",
+        about_cta: "عودة إلى الملف",
         lang_english: "English",
         lang_arabic: "العربية",
         set_modesty: "تفضيلات الاحتشام",

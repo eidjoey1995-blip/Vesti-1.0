@@ -319,6 +319,48 @@
     .upload-tips-body .tip-best { color: #2f7a4a; }
     .upload-tips-body .tip-good { color: #8a5a1a; }
     .upload-tips-body .tip-skip { color: #a43030; }
+
+    /* ---------- dupe review (Inc 2b) ---------- */
+    .dupe-card {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 12px;
+      padding: 12px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    .dupe-thumb {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #f1ede5;
+      display: block;
+    }
+    .dupe-text { min-width: 0; }
+    .dupe-q {
+      font-size: 14px;
+      color: var(--ink);
+      margin: 0;
+      line-height: 1.35;
+    }
+    .dupe-q.dupe-done {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .dupe-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 2px;
+    }
+    .dupe-actions .btn { padding: 8px 14px; font-size: 13px; }
+    .dupe-card.dupe-card-done { background: var(--bg); opacity: 0.8; }
   </style>
   <!-- PWA / Install -->
   <link rel="manifest" href="/manifest.json">
@@ -474,6 +516,18 @@
             <button class="btn ghost" id="btnAddMore">Add more</button>
             <button class="btn" id="btnSave" style="flex: 1;">Save my closet</button>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2.5: dupe review (Inc 2b) — only shown if /api/find-dupes returns matches. -->
+    <section id="step-dupes" class="step">
+      <h1>Possible duplicates</h1>
+      <p class="sub">A few of these look like pieces you already have. Same item, or different?</p>
+      <div id="dupesList"></div>
+      <div class="footer">
+        <div class="inner">
+          <button class="btn full" id="btnDupesContinue">Continue to my closet</button>
         </div>
       </div>
     </section>
@@ -854,6 +908,7 @@ $("#btnSave").addEventListener("click", async () => {
   const photosToSave = state.photos.filter(p => p.status === "ready" && p.garments.some(g => g._kept));
   let totalSaved = 0;
   let firstErr = null;
+  const insertedIds = [];   // collect inserted UUIDs across all photo saves → dedup check
 
   for (const photo of photosToSave) {
     const payload = {
@@ -887,6 +942,9 @@ $("#btnSave").addEventListener("click", async () => {
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error?.message || ("HTTP " + r.status));
       totalSaved += (j.saved || []).length;
+      for (const row of (j.saved || [])) {
+        if (row && row.id) insertedIds.push(row.id);
+      }
     } catch (err) {
       if (!firstErr) firstErr = err;
     }
@@ -902,8 +960,103 @@ $("#btnSave").addEventListener("click", async () => {
   const userEmail = (window._vesti_session && window._vesti_session.user && window._vesti_session.user.email) || "your account";
   $("#doneSummary").textContent = `${totalSaved} garments saved under ${userEmail}.${firstErr ? " (Some photos failed.)" : ""}`;
 
-  showStep("step-done");
+  // Inc 2b: dedup check against the user's existing closet.
+  // Non-fatal — any failure just falls through to step-done.
+  let matches = [];
+  if (insertedIds.length > 0) {
+    try {
+      const token = window._vesti_session && window._vesti_session.access_token;
+      const r = await fetch("/api/find-dupes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: "Bearer " + token } : {})
+        },
+        body: JSON.stringify({ candidate_ids: insertedIds })
+      });
+      if (r.ok) {
+        const j = await r.json();
+        matches = (j.matches || []).filter(m => m && m.match && m.match.confidence);
+      }
+    } catch (e) {
+      console.warn("find-dupes check failed (non-fatal):", e);
+    }
+  }
+
+  if (matches.length > 0) {
+    renderDupeReview(matches);
+    showStep("step-dupes");
+  } else {
+    showStep("step-done");
+  }
 });
+
+// ---------- dupe review (Inc 2b) ----------
+// After save, ask the user to confirm any close-match pieces in their existing closet.
+// "Same"      → POST /api/confirm-dupe — the new candidate is marked as a dupe of the older piece.
+// "Different" → no-op, both stay visible in the closet.
+// "Continue"  → step-done. Any un-actioned cards are implicit "Different" (both kept).
+function renderDupeReview(matches) {
+  const list = $("#dupesList");
+  if (!list) return;
+  list.innerHTML = matches.map(m => {
+    const lead = m.match.confidence === "strong" ? "Looks the same as" : "Maybe the same as";
+    const thumb = m.match.thumb_url
+      ? `<img src="${escapeHtml(m.match.thumb_url)}" class="dupe-thumb" alt="">`
+      : `<div class="dupe-thumb"></div>`;
+    return `
+      <div class="dupe-card"
+           data-candidate-id="${escapeHtml(m.candidate_id)}"
+           data-dupe-id="${escapeHtml(m.match.id)}"
+           data-confidence="${escapeHtml(m.match.confidence)}">
+        ${thumb}
+        <div class="dupe-text">
+          <p class="dupe-q">${lead} <strong>your ${escapeHtml(m.match.name || "piece")}</strong>?</p>
+        </div>
+        <div class="dupe-actions">
+          <button class="btn ghost dupe-btn" data-act="no">Different</button>
+          <button class="btn dupe-btn" data-act="yes">Same</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  list.querySelectorAll(".dupe-card .dupe-btn").forEach(b => {
+    b.addEventListener("click", async (e) => {
+      const card = e.currentTarget.closest(".dupe-card");
+      const act = e.currentTarget.dataset.act;
+      if (act === "yes") {
+        const candidate_id = card.dataset.candidateId;
+        const dupe_of_id   = card.dataset.dupeId;
+        const confidence   = card.dataset.confidence;
+        try {
+          const token = window._vesti_session && window._vesti_session.access_token;
+          await fetch("/api/confirm-dupe", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: "Bearer " + token } : {})
+            },
+            body: JSON.stringify({ candidate_id, dupe_of_id, confidence })
+          });
+        } catch (err) {
+          console.warn("confirm-dupe failed (non-fatal):", err);
+        }
+        card.classList.add("dupe-card-done");
+        card.querySelector(".dupe-text").innerHTML = '<p class="dupe-q dupe-done">Marked as same — we\'ll keep just one in your closet.</p>';
+        const actions = card.querySelector(".dupe-actions");
+        if (actions) actions.remove();
+      } else {
+        card.classList.add("dupe-card-done");
+        card.querySelector(".dupe-text").innerHTML = '<p class="dupe-q dupe-done">Kept both.</p>';
+        const actions = card.querySelector(".dupe-actions");
+        if (actions) actions.remove();
+      }
+    });
+  });
+}
+
+$("#btnDupesContinue").addEventListener("click", () => showStep("step-done"));
 </script>
   <script>
   (function() {

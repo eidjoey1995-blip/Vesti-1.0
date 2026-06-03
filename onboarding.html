@@ -323,7 +323,7 @@
     /* ---------- dupe review (Inc 2b) ---------- */
     .dupe-card {
       display: grid;
-      grid-template-columns: 64px 1fr;
+      grid-template-columns: auto 1fr;
       gap: 12px;
       padding: 12px;
       background: #fff;
@@ -332,14 +332,32 @@
       margin-bottom: 10px;
       align-items: center;
     }
+    .dupe-thumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
     .dupe-thumb {
-      width: 64px;
-      height: 64px;
+      width: 56px;
+      height: 56px;
       object-fit: cover;
       border-radius: 8px;
       border: 1px solid var(--line);
       background: #f1ede5;
       display: block;
+    }
+    .dupe-thumb-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 4px;
+      line-height: 1;
+    }
+    .dupe-thumb-col { display: flex; flex-direction: column; align-items: center; }
+    .dupe-arrow {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1;
     }
     .dupe-text { min-width: 0; }
     .dupe-q {
@@ -1001,7 +1019,10 @@ function renderDupeReview(matches) {
   if (!list) return;
   list.innerHTML = matches.map(m => {
     const lead = m.match.confidence === "strong" ? "Looks the same as" : "Maybe the same as";
-    const thumb = m.match.thumb_url
+    const candThumb = m.candidate_thumb_url
+      ? `<img src="${escapeHtml(m.candidate_thumb_url)}" class="dupe-thumb" alt="">`
+      : `<div class="dupe-thumb"></div>`;
+    const matchThumb = m.match.thumb_url
       ? `<img src="${escapeHtml(m.match.thumb_url)}" class="dupe-thumb" alt="">`
       : `<div class="dupe-thumb"></div>`;
     return `
@@ -1009,7 +1030,11 @@ function renderDupeReview(matches) {
            data-candidate-id="${escapeHtml(m.candidate_id)}"
            data-dupe-id="${escapeHtml(m.match.id)}"
            data-confidence="${escapeHtml(m.match.confidence)}">
-        ${thumb}
+        <div class="dupe-thumbs">
+          <div class="dupe-thumb-col">${candThumb}<span class="dupe-thumb-label">New</span></div>
+          <span class="dupe-arrow">≈</span>
+          <div class="dupe-thumb-col">${matchThumb}<span class="dupe-thumb-label">In closet</span></div>
+        </div>
         <div class="dupe-text">
           <p class="dupe-q">${lead} <strong>your ${escapeHtml(m.match.name || "piece")}</strong>?</p>
         </div>

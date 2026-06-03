@@ -89,9 +89,11 @@ export default async function handler(req, res) {
 
   // ── Step 1: load the candidate rows. Must belong to the caller; must have a hex.
   // Skip anything already resolved as a dupe — find-dupes is idempotent for safety.
+  // thumb_url is returned in the response so the UI can show candidate-vs-match
+  // side-by-side; without it, batch uploaders can't tell which piece is being asked about.
   const { data: candidates, error: candErr } = await supabase
     .from("garments")
-    .select("id, category, subcategory, dominant_hex")
+    .select("id, category, subcategory, dominant_hex, thumb_url")
     .in("id", candidate_ids)
     .eq("user_id", userId)
     .is("dupe_of_garment_id", null);
@@ -137,7 +139,7 @@ export default async function handler(req, res) {
 
   // ── Step 4: for each candidate, find the closest pool entry in the same category.
   const matches = candidates.map((cand) => {
-    const result = { candidate_id: cand.id, match: null };
+    const result = { candidate_id: cand.id, candidate_thumb_url: cand.thumb_url ?? null, match: null };
     if (!cand.dominant_hex) return result;
 
     const candLab = hexToLab(cand.dominant_hex);

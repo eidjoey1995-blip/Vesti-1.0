@@ -93,7 +93,7 @@ export default async function handler(req, res) {
   // side-by-side; without it, batch uploaders can't tell which piece is being asked about.
   const { data: candidates, error: candErr } = await supabase
     .from("garments")
-    .select("id, category, subcategory, dominant_hex, thumb_url")
+    .select("id, category, subcategory, color, dominant_hex, thumb_url")
     .in("id", candidate_ids)
     .eq("user_id", userId)
     .is("dupe_of_garment_id", null);
@@ -115,22 +115,30 @@ export default async function handler(req, res) {
 
   const candidateIdSet = new Set(candidates.map(c => c.id));
 
+  // No hex filter on the pool — we want null-hex entries available for the
+  // text-fallback path (when a candidate's thumb was dropped by the color
+  // sanity gate, both candidate and existing entry can have null hex).
   const { data: pool, error: poolErr } = await supabase
     .from("garments")
     .select("id, category, subcategory, color, fabric, description, thumb_url, dominant_hex")
     .eq("user_id", userId)
     .in("category", candidateCategories)
-    .is("dupe_of_garment_id", null)
-    .not("dominant_hex", "is", null);
+    .is("dupe_of_garment_id", null);
 
   if (poolErr) {
     return res.status(500).json({ error: { code: "pool_select_failed", message: poolErr.message } });
   }
 
-  // ── Step 3: pre-compute Lab for every pool row so we don't do it N times per candidate.
+  // ── Step 3: two indexes per category.
+  //   poolByCategory     — pre-computed Lab for hex-based matching
+  //   poolByCategoryAll  — every pool row (incl. null hex) for text-fallback
   const poolByCategory = new Map();
+  const poolByCategoryAll = new Map();
   for (const row of (pool || [])) {
     if (candidateIdSet.has(row.id)) continue;        // skip candidates themselves
+    if (!poolByCategoryAll.has(row.category)) poolByCategoryAll.set(row.category, []);
+    poolByCategoryAll.get(row.category).push(row);
+
     const lab = hexToLab(row.dominant_hex);
     if (!lab) continue;
     if (!poolByCategory.has(row.category)) poolByCategory.set(row.category, []);
@@ -138,39 +146,76 @@ export default async function handler(req, res) {
   }
 
   // ── Step 4: for each candidate, find the closest pool entry in the same category.
+  // Two paths:
+  //   (a) Hex path — Lab distance against pool entries that have a hex. Existing logic.
+  //   (b) Text fallback — when the candidate has no hex (color sanity gate dropped its
+  //       thumb), match against any pool entry with the same subcategory + color text.
+  //       Surfaces as "borderline" so the user confirms. Without this, gated-out items
+  //       would silently create duplicate closet rows.
   const matches = candidates.map((cand) => {
     const result = { candidate_id: cand.id, candidate_thumb_url: cand.thumb_url ?? null, match: null };
-    if (!cand.dominant_hex) return result;
 
-    const candLab = hexToLab(cand.dominant_hex);
-    if (!candLab) return result;
+    // (a) Hex path.
+    if (cand.dominant_hex) {
+      const candLab = hexToLab(cand.dominant_hex);
+      if (candLab) {
+        const pool = poolByCategory.get(cand.category);
+        if (pool && pool.length > 0) {
+          let best = null;
+          for (const entry of pool) {
+            const d = labDistance(candLab, entry.lab);
+            if (best === null || d < best.distance) {
+              best = { distance: d, entry };
+            }
+          }
+          if (best) {
+            let confidence = null;
+            if (best.distance < STRONG_DELTA) confidence = "strong";
+            else if (best.distance < BORDERLINE_DELTA) confidence = "borderline";
 
-    const pool = poolByCategory.get(cand.category);
-    if (!pool || pool.length === 0) return result;
-
-    let best = null;
-    for (const entry of pool) {
-      const d = labDistance(candLab, entry.lab);
-      if (best === null || d < best.distance) {
-        best = { distance: d, entry };
+            if (confidence) {
+              result.match = {
+                id: best.entry.row.id,
+                name: buildLabel(best.entry.row),
+                thumb_url: best.entry.row.thumb_url,
+                category: best.entry.row.category,
+                hex: best.entry.row.dominant_hex,
+                distance: Math.round(best.distance * 10) / 10,
+                confidence,
+              };
+              return result;
+            }
+          }
+        }
       }
+      // Hex existed but no Lab match within threshold — trust the color signal,
+      // don't fall through to text matching (would over-match distinct garments).
+      return result;
     }
-    if (!best) return result;
 
-    let confidence = null;
-    if (best.distance < STRONG_DELTA) confidence = "strong";
-    else if (best.distance < BORDERLINE_DELTA) confidence = "borderline";
+    // (b) Text fallback — candidate has no hex.
+    const candSub = (cand.subcategory || "").trim().toLowerCase();
+    const candColor = (cand.color || "").trim().toLowerCase();
+    if (!candSub || !candColor) return result;
 
-    if (!confidence) return result;
+    const fullPool = poolByCategoryAll.get(cand.category);
+    if (!fullPool || fullPool.length === 0) return result;
+
+    const textMatch = fullPool.find((row) => {
+      const rSub = (row.subcategory || "").trim().toLowerCase();
+      const rColor = (row.color || "").trim().toLowerCase();
+      return rSub === candSub && rColor === candColor;
+    });
+    if (!textMatch) return result;
 
     result.match = {
-      id: best.entry.row.id,
-      name: buildLabel(best.entry.row),
-      thumb_url: best.entry.row.thumb_url,
-      category: best.entry.row.category,
-      hex: best.entry.row.dominant_hex,
-      distance: Math.round(best.distance * 10) / 10,    // 1 decimal place for readability
-      confidence,
+      id: textMatch.id,
+      name: buildLabel(textMatch),
+      thumb_url: textMatch.thumb_url,
+      category: textMatch.category,
+      hex: textMatch.dominant_hex,
+      distance: null,                  // text match — no Lab distance
+      confidence: "borderline",        // always surface for user confirmation
     };
     return result;
   });

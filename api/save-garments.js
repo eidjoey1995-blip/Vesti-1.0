@@ -2,6 +2,13 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { maskGarment } from "../lib/grounded-sam.js";
 import { extractDominantHex } from "../lib/dominant-hex.js";
+import { colorDistance } from "../lib/color-sanity.js";
+
+// Categories we trust the color sanity gate on. Scoped to shoes for now —
+// shoes were the chronic offender (elevator marble walls bleeding into the
+// fallback crop). Expand once we've watched a few uploads in prod.
+const COLOR_GATED_CATEGORY = /(shoe|shoes|sneakers|boots|sandals|loafers|trainers|low.?top|high.?top)/i;
+const COLOR_GATE_THRESHOLD = 25; // CIE76 ΔE — "obviously different colors" to a human eye
 
 export const maxDuration = 60;
 
@@ -479,6 +486,20 @@ export default async function handler(req, res) {
         }
       }
 
+      // Compute dominant hex from the buffer BEFORE uploading so the color
+      // sanity gate can reject obviously-wrong thumbs (e.g. marble crop on a
+      // "white" sneaker) without leaving an orphan blob in storage.
+      const dominantHex = await extractDominantHex(finalBuf);
+
+      const catText = g.subcategory || g.category || "";
+      if (COLOR_GATED_CATEGORY.test(catText) && dominantHex && g.color) {
+        const dE = colorDistance(dominantHex, g.color);
+        if (dE !== null && dE > COLOR_GATE_THRESHOLD) {
+          console.log(`color sanity drop garment ${i}: path=${legacyPath} label="${label}" hex=${dominantHex} vs declared color="${g.color}" ΔE=${dE.toFixed(1)} > ${COLOR_GATE_THRESHOLD}`);
+          return [i, { url: null, hex: null }];
+        }
+      }
+
       const { error: upErr } = await supabase.storage
         .from("garment-thumbs")
         .upload(fileName, finalBuf, { contentType, upsert: false });
@@ -487,7 +508,6 @@ export default async function handler(req, res) {
         const { data: { publicUrl } } = supabase.storage
           .from("garment-thumbs")
           .getPublicUrl(fileName);
-        const dominantHex = await extractDominantHex(finalBuf);
         console.log(`path=${legacyPath} label=${label} hex=${dominantHex || "—"}`);
         return [i, { url: publicUrl, hex: dominantHex }];
       }

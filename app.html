@@ -5510,7 +5510,10 @@
       const heroDiv = root.querySelector(".item-hero");
       if (heroDiv) {
         const badge = heroDiv.querySelector(".source-badge");
-        heroDiv.querySelectorAll("img, svg").forEach(el => el.remove());
+        // Sweep both the old img/svg paths and the placeholder div added below,
+        // otherwise navigating from a null-thumb garment to a real-thumb one
+        // leaves the "Thumbnail unavailable" block behind the img.
+        heroDiv.querySelectorAll("img, svg, [data-thumb-missing]").forEach(el => el.remove());
         const sym = symbolFor(g.category);
         if (g.thumb_url) {
           const img = document.createElement("img");
@@ -5518,12 +5521,23 @@
           img.alt = "";
           heroDiv.insertBefore(img, badge || null);
         } else {
-          const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-          svgEl.setAttribute("viewBox", "0 0 50 60");
-          const useEl = document.createElementNS("http://www.w3.org/2000/svg", "use");
-          useEl.setAttribute("href", "#" + sym);
-          svgEl.appendChild(useEl);
-          heroDiv.insertBefore(svgEl, badge || null);
+          // No thumb on this row — either the color sanity gate dropped it in
+          // save-garments, or it was nulled by the audit script. Show an honest
+          // placeholder instead of the cartoon symbol so the user knows the AI
+          // didn't have a usable cutout for this piece, rather than reading the
+          // symbol as a real representation.
+          const placeholder = document.createElement("div");
+          placeholder.setAttribute("data-thumb-missing", "");
+          placeholder.style.cssText =
+            "display:flex;flex-direction:column;align-items:center;justify-content:center;" +
+            "width:100%;height:100%;gap:10px;text-align:center;padding:24px;box-sizing:border-box;";
+          placeholder.innerHTML =
+            `<svg viewBox="0 0 50 60" style="width:72px;height:72px;opacity:0.3;"><use href="#${sym}"/></svg>` +
+            `<div style="font-size:13px;line-height:1.4;color:var(--ink-mid);">` +
+              `<strong style="display:block;margin-bottom:4px;color:var(--ink);">Thumbnail unavailable</strong>` +
+              `We couldn't get a clean cutout from your photo.<br>Try deleting and re-uploading with a tighter shot.` +
+            `</div>`;
+          heroDiv.insertBefore(placeholder, badge || null);
         }
       }
       // Headline + category

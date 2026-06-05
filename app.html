@@ -4519,6 +4519,17 @@
     // Cycle the existing palette accent classes for visual rhythm in the grid.
     const TILE_ACCENTS = ["", "sage", "moss", "", "rose", "", "sage", "", "moss"];
 
+    // Display order for the "All" tab — same-category items render adjacent.
+    // Mirrors the segment-garments enum, grouped top-down (tops → bottoms → outer → shoes → acc → other).
+    const CATEGORY_ORDER = [
+      "shirt", "tshirt", "polo", "sweater",
+      "blazer", "jacket", "coat",
+      "pants", "jeans", "chinos", "shorts",
+      "shoes", "sneakers", "boots",
+      "accessory",
+      "other",
+    ];
+
     // Category filter map: chip data-filter value → list of category substrings to match.
     const FILTER_CATS = {
       tops:    ["shirt", "tshirt", "tee", "polo", "blouse", "top", "overshirt", "vest", "sweater", "cardigan", "jumper", "tank", "camisole", "henley", "knitwear"],
@@ -4535,7 +4546,7 @@
     // are display-only and must NEVER be written to garments.category.
     const SUBCAT_MAP = {
       tops: [
-        { key: "subcat_tshirts",    matches: ["t-shirt", "tee", "tank"],                                          category: "tshirt" },
+        { key: "subcat_tshirts",    matches: ["tshirt", "t-shirt", "tee", "tank"],                                category: "tshirt" },
         { key: "subcat_shirts",     matches: ["shirt", "button-down", "oxford"],                                  category: "shirt" },
         { key: "subcat_polos",      matches: ["polo"],                                                            category: "polo" },
         { key: "subcat_knits",      matches: ["jumper", "sweater", "knit", "cardigan", "pullover", "turtleneck"], category: "sweater" },
@@ -4837,7 +4848,19 @@
       const groups = groupBySubcat(visible);
 
       if (!groups) {
-        grid.innerHTML = visible.map((g, i) => renderTile(g, i)).join("");
+        // "All" tab: no subcat headers, but group same-category items together
+        // so the grid reads cleaner (all shirts together, all pants together, etc).
+        // Stable-sort by CATEGORY_ORDER index; unknown categories sink to the end.
+        const sorted = visible
+          .map((g, i) => ({ g, i, rank: CATEGORY_ORDER.indexOf((g.category || "").toLowerCase()) }))
+          .sort((a, b) => {
+            const ar = a.rank === -1 ? CATEGORY_ORDER.length : a.rank;
+            const br = b.rank === -1 ? CATEGORY_ORDER.length : b.rank;
+            if (ar !== br) return ar - br;
+            return a.i - b.i; // preserve original order within a category (created_at desc)
+          })
+          .map(({ g }) => g);
+        grid.innerHTML = sorted.map((g, i) => renderTile(g, i)).join("");
       } else {
         const d = i18n[state.lang] || i18n.en;
         let ti = 0;

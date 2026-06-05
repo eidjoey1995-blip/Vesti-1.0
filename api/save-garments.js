@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { maskGarment } from "../lib/grounded-sam.js";
 import { extractDominantHex } from "../lib/dominant-hex.js";
-import { colorDistance } from "../lib/color-sanity.js";
+import { colorDistance, whiteLightnessFail } from "../lib/color-sanity.js";
 
 // Categories we trust the color sanity gate on. Scoped to shoes for now —
 // shoes were the chronic offender (elevator marble walls bleeding into the
@@ -496,6 +496,12 @@ export default async function handler(req, res) {
         const dE = colorDistance(dominantHex, g.color);
         if (dE !== null && dE > COLOR_GATE_THRESHOLD) {
           console.log(`color sanity drop garment ${i}: path=${legacyPath} label="${label}" hex=${dominantHex} vs declared color="${g.color}" ΔE=${dE.toFixed(1)} > ${COLOR_GATE_THRESHOLD}`);
+          return [i, { url: null, hex: null }];
+        }
+        // Secondary check for whites — ΔE 25 is too forgiving for warm-tinted
+        // marble/wood floors that read as off-white. Lightness floor catches them.
+        if (whiteLightnessFail(dominantHex, g.color)) {
+          console.log(`color sanity drop garment ${i}: path=${legacyPath} label="${label}" hex=${dominantHex} declared "white" but L* below floor (warm-tinted, likely a floor crop)`);
           return [i, { url: null, hex: null }];
         }
       }

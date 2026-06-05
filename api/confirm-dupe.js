@@ -75,10 +75,11 @@ export default async function handler(req, res) {
 
   // Verify BOTH garments belong to the caller before we touch anything.
   // One query, two rows expected — if we get fewer than 2 back, one of
-  // them is missing or owned by someone else.
+  // them is missing or owned by someone else. We also pull thumb_url so we
+  // can upgrade the original's thumbnail when the new photo is sharper.
   const { data: owned, error: ownErr } = await supabase
     .from("garments")
-    .select("id, user_id")
+    .select("id, user_id, thumb_url")
     .in("id", [candidate_id, dupe_of_id])
     .eq("user_id", userId);
 
@@ -102,5 +103,32 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: { code: "update_failed", message: updateErr.message } });
   }
 
-  return res.status(200).json({ ok: true, candidate_id, dupe_of_id, confidence });
+  // ── Thumbnail upgrade ───────────────────────────────────────────────────
+  // Worn-first flow: the duplicate is usually a fresh close-up, so its cutout
+  // is often sharper than the original's (which may be a tiny crop from a
+  // full-body mirror shot). If the candidate produced a thumb and the original
+  // has none, promote the candidate's thumb onto the original so the kept
+  // garment shows the better image. Only fills a gap — never clobbers an
+  // existing original thumb — to stay safe and low-usage. Non-fatal: a failure
+  // here must not undo the dupe marking, so errors are swallowed.
+  let thumb_upgraded = false;
+  try {
+    const candidate = owned.find((g) => g.id === candidate_id);
+    const original  = owned.find((g) => g.id === dupe_of_id);
+    const candThumb = candidate?.thumb_url && String(candidate.thumb_url).trim();
+    const origHasThumb = original?.thumb_url && String(original.thumb_url).trim();
+    if (candThumb && !origHasThumb) {
+      const { error: thumbErr } = await supabase
+        .from("garments")
+        .update({ thumb_url: candThumb })
+        .eq("id", dupe_of_id)
+        .eq("user_id", userId);
+      if (thumbErr) console.warn("confirm-dupe thumb upgrade failed (non-fatal):", thumbErr.message);
+      else thumb_upgraded = true;
+    }
+  } catch (e) {
+    console.warn("confirm-dupe thumb upgrade error (non-fatal):", e?.message || e);
+  }
+
+  return res.status(200).json({ ok: true, candidate_id, dupe_of_id, confidence, thumb_upgraded });
 }

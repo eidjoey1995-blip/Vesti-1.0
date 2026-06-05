@@ -300,7 +300,7 @@ export default async function handler(req, res) {
   }
 
   // Whitelist city to the BETA cohort cities.
-  const ALLOWED_CITIES = new Set(["Beirut", "Dubai", "New York"]);
+  const ALLOWED_CITIES = new Set(["Beirut", "Dubai", "Riyadh", "New York"]);
   const cityClean = (typeof city === "string" && ALLOWED_CITIES.has(city)) ? city : null;
 
   // Ensure profile row exists (idempotent upsert). Include city when provided.

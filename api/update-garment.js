@@ -100,7 +100,7 @@ export default async function handler(req, res) {
   // description label when color/fabric/category change without a custom name.
   const { data: existing, error: fetchErr } = await supabase
     .from("garments")
-    .select("id, user_id, color, fabric, category")
+    .select("id, user_id, color, fabric, category, subcategory, pattern, formality_score, description, source_photo_url, thumb_url")
     .eq("id", garment_id)
     .single();
 
@@ -139,6 +139,48 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: { code: "update_failed", message: updateErr.message }
     });
+  }
+
+  // ── Log corrections ───────────────────────────────────────────────────────
+  // Capture what the vision model got wrong (old value) vs what the user fixed
+  // it to (new value), one row per changed field. This is the training fuel for
+  // better prompts / few-shot examples / future fingerprinting. Auto-regenerated
+  // description/subcategory are intentionally NOT logged — only fields the user
+  // explicitly changed count as a correction. Non-fatal: a logging failure must
+  // never break the user's edit, so errors are swallowed.
+  try {
+    const norm = (v) => (v === null || v === undefined) ? null : String(v).trim().toLowerCase();
+    const fieldMap = [
+      ["category",        updates.category,                       existing.category],
+      ["subcategory",     updates.sub_category,                   existing.subcategory],
+      ["color",           updates.color,                          existing.color],
+      ["pattern",         updates.pattern,                        existing.pattern],
+      ["fabric",          updates.fabric,                         existing.fabric],
+      ["formality_score", updates.formality_score,                existing.formality_score],
+      ["name",            userTypedName ? updates.name : undefined, existing.description],
+    ];
+    const corrections = [];
+    for (const [field, rawNew, rawOld] of fieldMap) {
+      if (rawNew === undefined || rawNew === null) continue;        // user didn't touch this field
+      if (typeof rawNew === "string" && !rawNew.trim()) continue;   // blank = no change
+      if (norm(rawNew) === norm(rawOld)) continue;                  // value unchanged
+      corrections.push({
+        user_id: userId,
+        garment_id,
+        field,
+        old_value: (rawOld === null || rawOld === undefined) ? null : String(rawOld),
+        new_value: String(rawNew).trim(),
+        source_photo_url: existing.source_photo_url || null,
+        thumb_url: existing.thumb_url || null,
+      });
+    }
+    if (corrections.length) {
+      const { error: logErr } = await supabase.from("garment_corrections").insert(corrections);
+      if (logErr) console.warn("garment_corrections insert failed (non-fatal):", logErr.message);
+      else console.log(`logged ${corrections.length} correction(s) for garment ${garment_id}: ${corrections.map(c => c.field).join(", ")}`);
+    }
+  } catch (logErr) {
+    console.warn("garment_corrections log failed (non-fatal):", logErr?.message || logErr);
   }
 
   return res.status(200).json({ garment: updated });

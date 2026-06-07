@@ -934,7 +934,12 @@ $("#btnSave").addEventListener("click", async () => {
   let firstErr = null;
   const insertedIds = [];   // collect inserted UUIDs across all photo saves → dedup check
 
-  for (const photo of photosToSave) {
+  // Save one photo's kept garments. Each call runs grounded-sam thumbnails
+  // server-side, so it's slow (seconds). We used to await these strictly one
+  // at a time, which made an 18-photo closet take ~5 min to save. Now we run a
+  // few in parallel (see pool below). Shared counters are mutated here; JS is
+  // single-threaded so the += / push between awaits are safe.
+  async function saveOnePhoto(photo) {
     const payload = {
       city: state.city, // upserts onto profiles.city; non-fatal if column missing
       source_photo_url: null,
@@ -973,6 +978,21 @@ $("#btnSave").addEventListener("click", async () => {
       if (!firstErr) firstErr = err;
     }
   }
+
+  // Fixed-size worker pool. Capped at 3 concurrent saves so we cut the wait
+  // without blowing past Replicate's per-account concurrency limit (each save
+  // can fire several Replicate cutouts of its own).
+  const SAVE_CONCURRENCY = 3;
+  let _cursor = 0;
+  async function _saveWorker() {
+    while (_cursor < photosToSave.length) {
+      const idx = _cursor++;
+      await saveOnePhoto(photosToSave[idx]);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(SAVE_CONCURRENCY, photosToSave.length) }, _saveWorker)
+  );
 
   if (firstErr && totalSaved === 0) {
     btn.disabled = false;

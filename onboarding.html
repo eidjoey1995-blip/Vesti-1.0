@@ -717,7 +717,12 @@ async function resizeImage(file, maxDim = 1024) {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, w, h);
       const out = canvas.toDataURL("image/jpeg", 0.82);
-      resolve({ dataUrl: out, originalDataUrl: dataUrl });
+      // Only return the resized copy. We used to also hand back the full-res
+      // original (originalDataUrl) and keep it on the photo object for the
+      // preview tile — but with 40+ iPhone photos that's 200MB+ of base64 held
+      // in the tab at once, which crashes mobile Safari mid-onboarding. The
+      // resized 1024px JPEG looks identical on a phone tile.
+      resolve({ dataUrl: out });
     };
     img.onerror = reject;
     img.src = dataUrl;
@@ -777,8 +782,8 @@ $("#fileInput").addEventListener("change", async (e) => {
   // Process sequentially to avoid hammering the endpoint.
   for (const photo of state.photos.filter(p => p.status === "loading")) {
     try {
-      const { dataUrl, originalDataUrl } = await resizeImage(photo.file, 1024);
-      photo.dataUrl = originalDataUrl;
+      const { dataUrl } = await resizeImage(photo.file, 1024);
+      photo.dataUrl = dataUrl;                       // resized preview, not full-res original
       photo.smallBase64 = dataUrlToBase64(dataUrl);
       photo.status = "segmenting";
       render();

@@ -5790,13 +5790,27 @@
       return "tops";
     }
 
-    function populateSubcatOptions(categoryGroup, selectedSubcat) {
+    function populateSubcatOptions(categoryGroup, garment) {
       if (!_editSubSelect) return;
       const d = i18n[state.lang] || i18n.en;
       const sections = SUBCAT_MAP[categoryGroup] || [];
-      _editSubSelect.innerHTML = sections.map(s => {
+      // Pick which option to pre-select by matching the garment's REAL category
+      // (and its subcategory text as a fallback) against each section's match
+      // list — the same logic the closet grid uses in groupBySubcat. The old
+      // code compared the option LABEL ("T-shirts") to the free-text subcategory
+      // ("overshirt"), which never matched, so the <select> always fell back to
+      // its first option (T-shirts) — wrong, and a save would corrupt category.
+      let selIdx = -1;
+      if (garment) {
+        const hay = ((garment.category || "") + " " + (garment.subcategory || "")).toLowerCase();
+        for (let i = 0; i < sections.length - 1; i++) {
+          if (sections[i].matches.some(m => hay.includes(m))) { selIdx = i; break; }
+        }
+        if (selIdx === -1) selIdx = sections.length - 1; // "Other …" fallback bucket
+      }
+      _editSubSelect.innerHTML = sections.map((s, i) => {
         const label = d[s.key] || s.key;
-        const sel = selectedSubcat && label.toLowerCase() === selectedSubcat.toLowerCase() ? " selected" : "";
+        const sel = i === selIdx ? " selected" : "";
         const cat = s.category || "";
         return `<option value="${label}" data-category="${cat}"${sel}>${label}</option>`;
       }).join("");
@@ -5816,7 +5830,7 @@
       _editColorInput.value = g.color || "";
       const catGroup = garmentCategoryGroup(g);
       _editCatSelect.value = catGroup;
-      populateSubcatOptions(catGroup, g.subcategory);
+      populateSubcatOptions(catGroup, g);
       if (_editFormalityGroup) {
         const score = typeof g.formality_score === "number" ? g.formality_score : null;
         _editFormalityGroup.querySelectorAll(".edit-formality-btn").forEach(b => {

@@ -32,6 +32,17 @@ const STRONG_DELTA = 10;
 const BORDERLINE_DELTA = 20;
 const MAX_CANDIDATES = 50;
 
+// Two garments with clearly different patterns (e.g. solid vs plaid) are not the
+// same piece, even if their dominant colour matches. Only block when BOTH
+// patterns are known and meaningful — if either is missing or "other", we can't
+// trust it, so we fall back to colour alone rather than risk missing a real dupe.
+function patternsConflict(a, b) {
+  const na = (a || "").trim().toLowerCase();
+  const nb = (b || "").trim().toLowerCase();
+  if (!na || !nb || na === "other" || nb === "other") return false;
+  return na !== nb;
+}
+
 async function resolveUser(req, supabase) {
   const auth = (req.headers.authorization || "").trim();
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -49,12 +60,17 @@ async function resolveUser(req, supabase) {
 // Mirrors the buildLabel pattern in update-garment.js so the UI
 // can read straight from this without further processing.
 function buildLabel(row) {
+  const cat = String(row.subcategory || row.category || "").trim().toLowerCase();
+  const color = row.color ? String(row.color).trim().toLowerCase() : "";
+  const fab = row.fabric ? String(row.fabric).trim().toLowerCase() : "";
   const parts = [];
-  if (row.color    && String(row.color).trim())    parts.push(String(row.color).trim().toLowerCase());
-  const fab = row.fabric && String(row.fabric).trim().toLowerCase();
-  if (fab && fab !== "other") parts.push(fab);
-  const cat = row.subcategory || row.category;
-  if (cat && String(cat).trim()) parts.push(String(cat).trim().toLowerCase());
+  // The vision subcategory is often already a full phrase that includes the
+  // colour and fabric (e.g. "navy dress trousers", "grey check blazer"). Only
+  // prepend colour/fabric when the phrase doesn't already contain them —
+  // otherwise we get "navy navy dress trousers".
+  if (color && !cat.includes(color)) parts.push(color);
+  if (fab && fab !== "other" && !cat.includes(fab)) parts.push(fab);
+  if (cat) parts.push(cat);
   return parts.join(" ") || row.description || "this piece";
 }
 
@@ -93,7 +109,7 @@ export default async function handler(req, res) {
   // side-by-side; without it, batch uploaders can't tell which piece is being asked about.
   const { data: candidates, error: candErr } = await supabase
     .from("garments")
-    .select("id, category, subcategory, color, dominant_hex, thumb_url")
+    .select("id, category, subcategory, color, pattern, dominant_hex, thumb_url")
     .in("id", candidate_ids)
     .eq("user_id", userId)
     .is("dupe_of_garment_id", null);
@@ -120,7 +136,7 @@ export default async function handler(req, res) {
   // sanity gate, both candidate and existing entry can have null hex).
   const { data: pool, error: poolErr } = await supabase
     .from("garments")
-    .select("id, category, subcategory, color, fabric, description, thumb_url, dominant_hex")
+    .select("id, category, subcategory, color, fabric, pattern, description, thumb_url, dominant_hex")
     .eq("user_id", userId)
     .in("category", candidateCategories)
     .is("dupe_of_garment_id", null);
@@ -163,6 +179,9 @@ export default async function handler(req, res) {
         if (pool && pool.length > 0) {
           let best = null;
           for (const entry of pool) {
+            // Different pattern (solid vs plaid etc.) = not the same garment,
+            // regardless of how close the colour is.
+            if (patternsConflict(cand.pattern, entry.row.pattern)) continue;
             const d = labDistance(candLab, entry.lab);
             if (best === null || d < best.distance) {
               best = { distance: d, entry };
@@ -204,6 +223,7 @@ export default async function handler(req, res) {
     const textMatch = fullPool.find((row) => {
       const rSub = (row.subcategory || "").trim().toLowerCase();
       const rColor = (row.color || "").trim().toLowerCase();
+      if (patternsConflict(cand.pattern, row.pattern)) return false;
       return rSub === candSub && rColor === candColor;
     });
     if (!textMatch) return result;

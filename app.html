@@ -627,10 +627,10 @@
     }
     .piece {
       flex-shrink: 0;
-      width: 68px;
+      width: 104px;
     }
     .piece-thumb {
-      width: 68px; height: 68px;
+      width: 104px; height: 128px;
       border-radius: 10px;
       background: var(--cream);
       display: grid; place-items: center;
@@ -639,10 +639,14 @@
     .piece-thumb svg { width: 60%; height: 60%; opacity: 0.8; }
     .piece-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
     .piece-label {
-      font-size: 10px;
+      font-size: 11px;
       color: var(--ink-mid);
       line-height: 1.3;
       text-align: center;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
     .outfit-meta {
       display: flex;
@@ -948,15 +952,15 @@
     }
     .today-outfit-items::-webkit-scrollbar { display: none; }
     .today-outfit-item {
-      flex: 0 0 72px;
+      flex: 0 0 108px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
     }
     .today-outfit-thumb {
-      width: 64px;
-      height: 80px;
+      width: 100px;
+      height: 124px;
       border-radius: 12px;
       background: rgba(250,247,242,0.7);
       overflow: hidden;
@@ -967,14 +971,15 @@
     .today-outfit-thumb img { width: 100%; height: 100%; object-fit: cover; }
     .today-outfit-thumb svg { width: 68%; height: 68%; opacity: 0.85; }
     .today-outfit-item-label {
-      font-size: 10px;
+      font-size: 11px;
       color: var(--ink-mid);
       text-align: center;
       line-height: 1.3;
-      max-width: 64px;
+      max-width: 100px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
     }
     .today-outfit-reasoning {
       font-size: 12px;

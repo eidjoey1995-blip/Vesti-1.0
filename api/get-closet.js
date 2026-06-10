@@ -27,6 +27,7 @@ const SELECT_COLUMNS = [
   "thumb_url",
   "source_photo_url",
   "segment_index",
+  "suit_set_id",
   "created_at"
 ].join(", ");
 

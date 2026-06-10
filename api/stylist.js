@@ -55,6 +55,7 @@ const GARMENT_COLUMNS = [
   "fabric",
   "brand",
   "thumb_url",
+  "suit_set_id",
   "created_at"
 ].join(", ");
 
@@ -208,7 +209,8 @@ OUTPUT RULES:
 - If the closet lacks something essential (e.g. no shoes), pick the closest substitute and name the gap explicitly in reasoning.
 - ROTATION: If a list of recently-worn garment ids is provided, prefer different garments so the user sees variety day to day. Only repeat a recently-worn piece when the closet has no suitable alternative for the occasion — appropriateness always beats novelty, but when good alternatives exist, rotate.
 - LOCKED PIECES: If a list of locked garment ids is provided, the user has explicitly kept those pieces from a previous outfit. You MUST include every locked id in your items exactly as given. Build the rest of the outfit around them — fill only the remaining roles with fresh picks that work with the locked pieces. Never drop or substitute a locked piece.
-- REJECTED PIECES: If a list of rejected garment ids is provided, the user disliked those pieces in a previous attempt. Never include a rejected id in your items, even if it would otherwise be a strong pick.`;
+- REJECTED PIECES: If a list of rejected garment ids is provided, the user disliked those pieces in a previous attempt. Never include a rejected id in your items, even if it would otherwise be a strong pick.
+- SUIT SETS: Some garments carry a "suit" tag (e.g. "S1"). Every piece sharing the same suit tag is one matched suit and must be worn together. If you include ANY piece with a suit tag, include EVERY piece that shares that tag, and never pair a suit piece with a non-matching piece in the same role (e.g. never put a suit jacket with non-suit trousers). If a suit does not fit the occasion, use none of its pieces.`;
 }
 
 const anthropic = new Anthropic({
@@ -337,6 +339,20 @@ export default async function handler(req, res) {
     });
   }
 
+  // Short, token-cheap suit labels (e.g. "S1") for the prompt. Only real suits
+  // count — a suit_set_id with a single surviving piece (its partner was deleted
+  // or is a dupe) is not a suit and gets no tag.
+  const suitCounts = new Map();
+  for (const g of garments) {
+    if (g.suit_set_id) suitCounts.set(g.suit_set_id, (suitCounts.get(g.suit_set_id) || 0) + 1);
+  }
+  const suitCode = new Map();
+  let _suitN = 0;
+  for (const g of garments) {
+    const sid = g.suit_set_id;
+    if (sid && suitCounts.get(sid) >= 2 && !suitCode.has(sid)) suitCode.set(sid, "S" + (++_suitN));
+  }
+
   // Build compact garment payload for the model — strip nulls, keep only
   // the fields a stylist actually needs to make a pick. Cuts prompt size.
   const compactGarments = garments.map((g) => {
@@ -348,6 +364,7 @@ export default async function handler(req, res) {
     if (typeof g.formality_score === "number") out.formality = g.formality_score;
     if (g.fabric) out.fabric = g.fabric;
     if (g.description) out.description = g.description;
+    if (g.suit_set_id && suitCode.has(g.suit_set_id)) out.suit = suitCode.get(g.suit_set_id);
     return out;
   });
 
@@ -431,6 +448,82 @@ export default async function handler(req, res) {
       items.push({ garment_id: kid, role: roleFromCategory(g?.category) });
     }
   }
+  // ── Suit-set integrity guard (deterministic — the real protection) ──────────
+  // A suit is N garments sharing a suit_set_id. The prompt asks the model to keep
+  // a suit together, but we don't trust that. If the outfit touches ANY piece of
+  // a suit, we force the whole suit in and evict any non-suit piece occupying a
+  // role the suit fills (so a suit jacket can never go out with random trousers).
+  if (items.length > 0) {
+    const garmentById = new Map(garments.map((g) => [String(g.id), g]));
+    // Role of a garment, tolerant of phrase subcategories like "navy dress trousers".
+    const suitRole = (g) => {
+      const s = ((g?.category || "") + " " + (g?.subcategory || "")).toLowerCase();
+      if (/trouser|pant|chino|jean|short/.test(s)) return "bottom";
+      if (/blazer|jacket|coat|waistcoat|\bvest\b|suit/.test(s)) return "layer";
+      if (/shoe|loafer|sneaker|boot|oxford|derby/.test(s)) return "shoe";
+      if (/shirt|tee|polo/.test(s)) return "top";
+      return null;
+    };
+
+    // Real suits only (>=2 pieces in the closet).
+    const setMembers = new Map();
+    for (const g of garments) {
+      if (!g.suit_set_id) continue;
+      const sid = String(g.suit_set_id);
+      if (!setMembers.has(sid)) setMembers.set(sid, []);
+      setMembers.get(sid).push(String(g.id));
+    }
+    for (const [sid, m] of setMembers) if (m.length < 2) setMembers.delete(sid);
+
+    const memberToSet = new Map();
+    for (const [sid, m] of setMembers) for (const id of m) memberToSet.set(id, sid);
+
+    const activated = new Set();
+    for (const it of items) {
+      const sid = memberToSet.get(it.garment_id);
+      if (sid) activated.add(sid);
+    }
+
+    const keepSet = new Set(keepIds);
+    const dropMembers = (memberSet) => {
+      for (let i = items.length - 1; i >= 0; i--) {
+        if (memberSet.has(items[i].garment_id)) items.splice(i, 1);
+      }
+    };
+
+    for (const sid of activated) {
+      const members = setMembers.get(sid);
+      const memberSet = new Set(members);
+      const memberRoles = new Set(members.map((id) => suitRole(garmentById.get(id))).filter(Boolean));
+
+      // A rejected suit piece means we can't show the suit intact — pull it all
+      // rather than display half a suit.
+      if (members.some((id) => rejectedSet.has(id))) { dropMembers(memberSet); continue; }
+
+      // A locked non-suit piece in a colliding role outranks the suit (the user
+      // just locked it this turn). Drop the suit orphan instead of the lock.
+      const lockedCollision = items.some((it) =>
+        !memberSet.has(it.garment_id) &&
+        keepSet.has(it.garment_id) &&
+        memberRoles.has(suitRole(garmentById.get(it.garment_id)))
+      );
+      if (lockedCollision) { dropMembers(memberSet); continue; }
+
+      // Evict any non-suit piece occupying a role the suit fills.
+      for (let i = items.length - 1; i >= 0; i--) {
+        const it = items[i];
+        if (memberSet.has(it.garment_id)) continue;
+        if (memberRoles.has(suitRole(garmentById.get(it.garment_id)))) items.splice(i, 1);
+      }
+      // Ensure every suit piece is present.
+      const present = new Set(items.map((it) => it.garment_id));
+      for (const id of members) {
+        if (present.has(id)) continue;
+        items.push({ garment_id: id, role: suitRole(garmentById.get(id)) });
+      }
+    }
+  }
+
   // Belt-and-suspenders: strip any internal jargon Claude leaked into user-facing text.
   const rawReasoning = typeof parsed?.reasoning === "string" ? parsed.reasoning : "";
   const reasoning = rawReasoning

@@ -495,8 +495,15 @@ export default async function handler(req, res) {
       if (COLOR_GATED_CATEGORY.test(catText) && dominantHex && g.color) {
         const dE = colorDistance(dominantHex, g.color);
         if (dE !== null && dE > COLOR_GATE_THRESHOLD) {
-          console.log(`color sanity drop garment ${i}: path=${legacyPath} label="${label}" hex=${dominantHex} vs declared color="${g.color}" ΔE=${dE.toFixed(1)} > ${COLOR_GATE_THRESHOLD}`);
-          return [i, { url: null, hex: null }];
+          // The cutout's dominant color disagrees with the AI's color name.
+          // This used to NULL the thumbnail, but a mismatch usually means the
+          // AI mislabeled the COLOR (muddy suede earth-tones, odd lighting),
+          // not that the cutout is bad — and a missing thumb (the SVG cartoon)
+          // is worse UX than a real photo with a slightly-off color tag. Keep
+          // the cutout and trust the measured hex over the label. The
+          // whiteLightnessFail check below still nulls warm floor/marble crops
+          // on "white" shoes — the genuine bad-cutout case this gate is for.
+          console.log(`color mismatch (kept) garment ${i}: path=${legacyPath} label="${label}" hex=${dominantHex} vs declared color="${g.color}" ΔE=${dE.toFixed(1)} > ${COLOR_GATE_THRESHOLD}`);
         }
         // Secondary check for whites — ΔE 25 is too forgiving for warm-tinted
         // marble/wood floors that read as off-white. Lightness floor catches them.

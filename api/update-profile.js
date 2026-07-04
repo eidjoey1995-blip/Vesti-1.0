@@ -1,4 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "../lib/supabase.js";
+import { resolveUser } from "../lib/auth.js";
 
 // =========================================================
 // GET  /api/update-profile   → { profile: { daily_register, first_name, city } }
@@ -21,36 +22,14 @@ const VALID_DAILY_REGISTER = new Set(["casual", "smart-casual", "business"]);
 const VALID_CITIES = new Set(["Beirut", "Dubai", "Riyadh", "New York"]);
 const FIRST_NAME_MAX = 40;
 
-async function resolveUser(req, supabase) {
-  const auth = (req.headers.authorization || "").trim();
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-  if (!token) {
-    return { userId: null, err: { code: "unauthorized", message: "Authorization header required" } };
-  }
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
-    return { userId: null, err: { code: "unauthorized", message: error?.message || "Invalid token" } };
-  }
-  return { userId: user.id, err: null };
-}
-
 export default async function handler(req, res) {
   if (req.method !== "GET" && req.method !== "POST") {
     res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: { code: "method_not_allowed", message: "GET or POST only" } });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey  = process.env.SUPABASE_SERVICE_KEY;
-  if (!supabaseUrl || !serviceKey) {
-    return res.status(500).json({
-      error: { code: "missing_env", message: "SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in Vercel env vars." }
-    });
-  }
-
-  const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
+  const { supabase, envErr } = getServiceClient();
+  if (envErr) return res.status(500).json({ error: envErr });
 
   const { userId, err } = await resolveUser(req, supabase);
   if (err) return res.status(401).json({ error: err });

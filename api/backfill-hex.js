@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "../lib/supabase.js";
 import { extractDominantHex } from "../lib/dominant-hex.js";
 
 export const maxDuration = 60;
@@ -43,15 +43,8 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Invalid secret" });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey  = process.env.SUPABASE_SERVICE_KEY;
-  if (!supabaseUrl || !serviceKey) {
-    return res.status(500).json({ error: "SUPABASE_URL and SUPABASE_SERVICE_KEY must be set" });
-  }
-
-  const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
+  const { supabase, envErr } = getServiceClient();
+  if (envErr) return res.status(500).json({ error: envErr });
 
   // ── Parse limit ────────────────────────────────────────────────────────────
   let limit = DEFAULT_LIMIT;

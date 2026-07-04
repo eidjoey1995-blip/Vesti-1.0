@@ -1,4 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "../lib/supabase.js";
+import { resolveUser } from "../lib/auth.js";
 import sharp from "sharp";
 import { maskGarment } from "../lib/grounded-sam.js";
 import { extractDominantHex } from "../lib/dominant-hex.js";
@@ -166,19 +167,6 @@ async function removeBackground(imageUrl) {
   return null;
 }
 
-async function resolveUser(req, supabase) {
-  const auth = (req.headers.authorization || "").trim();
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-  if (!token) {
-    return { userId: null, email: null, err: { code: "unauthorized", message: "Authorization header required" } };
-  }
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
-    return { userId: null, email: null, err: { code: "unauthorized", message: error?.message || "Invalid token" } };
-  }
-  return { userId: user.id, email: user.email, err: null };
-}
-
 async function handleReprocess(req, res, supabase) {
   const { garment_id } = req.body || {};
   if (!garment_id || typeof garment_id !== "string") {
@@ -276,17 +264,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: { code: "method_not_allowed", message: "POST only" } });
   }
 
-  const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-  if (!url || !serviceKey) {
-    return res.status(500).json({
-      error: { code: "missing_env", message: "SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in Vercel env vars." }
-    });
-  }
-
-  const supabase = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
+  const { supabase, envErr } = getServiceClient();
+  if (envErr) return res.status(500).json({ error: envErr });
 
   if ((req.body || {}).mode === "reprocess") return handleReprocess(req, res, supabase);
 

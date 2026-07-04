@@ -1,4 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "../lib/supabase.js";
+import { resolveUser } from "../lib/auth.js";
 import Anthropic from "@anthropic-ai/sdk";
 
 // =========================================================
@@ -59,19 +60,6 @@ Additional rules:
 - reason: what it adds to the outfit, 8 words max.
 - Return 2-3 pairs. If fewer candidates exist, return fewer.`;
 
-async function resolveUser(req, supabase) {
-  const auth = (req.headers.authorization || "").trim();
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-  if (!token) {
-    return { userId: null, err: { code: "unauthorized", message: "Authorization header required" } };
-  }
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
-    return { userId: null, err: { code: "unauthorized", message: error?.message || "Invalid token" } };
-  }
-  return { userId: user.id, err: null };
-}
-
 function compact(g) {
   const out = { id: g.id };
   if (g.category) out.category = g.category;
@@ -87,22 +75,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: { code: "method_not_allowed", message: "POST only" } });
   }
 
-  const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-  if (!url || !serviceKey) {
-    return res.status(500).json({
-      error: { code: "missing_env", message: "SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in Vercel env vars." }
-    });
-  }
+  const { supabase, envErr } = getServiceClient();
+  if (envErr) return res.status(500).json({ error: envErr });
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({
       error: { code: "missing_env", message: "ANTHROPIC_API_KEY must be set in Vercel env vars." }
     });
   }
 
-  const supabase = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
 
   const { userId, err: authErr } = await resolveUser(req, supabase);
   if (authErr) return res.status(401).json({ error: authErr });

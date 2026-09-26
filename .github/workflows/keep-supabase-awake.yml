@@ -1,0 +1,38 @@
+name: Keep Supabase awake
+
+# Supabase Free pauses a project after 7 days with no database activity.
+# This runs once a day and makes one tiny query, which resets that 7-day clock.
+# Result: the database never falls asleep, so magic-link logins always work.
+
+on:
+  schedule:
+    # Runs every day at 06:00 UTC (09:00 Beirut). Cron time is always in UTC.
+    - cron: "0 6 * * *"
+  workflow_dispatch:   # lets you also run it by hand from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the database
+        run: |
+          # ---- PASTE YOUR PUBLIC KEY BELOW (between the quotes) ----
+          # Get it from: Supabase dashboard -> Project Settings -> API
+          #   -> copy the key labelled "anon" / "public" (NOT the service_role key).
+          # This key is safe to put here; it already ships inside your app.
+          ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtZ2Z0cW5la2lzcGF6amZucXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjIxNDAsImV4cCI6MjA5MzAzODE0MH0.0s6rlrt3i8ojwEyn-jkPntFrVgQzXK1NQKloNapBk4g"
+
+          echo "Pinging Supabase..."
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "https://tmgftqnekispazjfnqxw.supabase.co/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: $ANON_KEY" \
+            -H "Authorization: Bearer $ANON_KEY")
+
+          echo "HTTP status: $STATUS"
+          # 200 or 206 = success. 401 usually means the key wasn't pasted correctly.
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "206" ]; then
+            echo "Success - the 7-day sleep timer has been reset."
+          else
+            echo "Ping did not return success. Check that ANON_KEY is your anon/public key."
+            exit 1
+          fi

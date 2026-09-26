@@ -1,0 +1,10 @@
+# Endpoints merged into api/garment.js (kept in repo, excluded from deploy):
+api/confirm-dupe.js
+api/delete-garment.js
+api/find-dupes.js
+api/link-suit.js
+api/pair-garment.js
+api/update-garment.js
+# Dead endpoints (one-time migration + retired SAM warmer):
+api/backfill-hex.js
+api/warm-sam.js

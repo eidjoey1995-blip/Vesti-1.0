@@ -1,7 +1,14 @@
 {
   "functions": {
     "api/segment-garments.js": { "maxDuration": 60 },
-    "api/save-garments.js": { "maxDuration": 60 },
-    "api/warm-sam.js": { "maxDuration": 60 }
-  }
+    "api/save-garments.js": { "maxDuration": 60 }
+  },
+  "rewrites": [
+    { "source": "/api/delete-garment", "destination": "/api/garment?action=delete-garment" },
+    { "source": "/api/update-garment", "destination": "/api/garment?action=update-garment" },
+    { "source": "/api/confirm-dupe",   "destination": "/api/garment?action=confirm-dupe" },
+    { "source": "/api/find-dupes",     "destination": "/api/garment?action=find-dupes" },
+    { "source": "/api/link-suit",      "destination": "/api/garment?action=link-suit" },
+    { "source": "/api/pair-garment",   "destination": "/api/garment?action=pair-garment" }
+  ]
 }

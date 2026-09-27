@@ -390,6 +390,10 @@
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
+  <!-- Self-hosted HEIC/HEIF decoder (heic-to, bundles libheif 1.23). iPhone photos
+       are HEIC, which the browser canvas cannot decode; this converts them to JPEG
+       before upload. Handles modern iPhone grid/HDR HEIC that older decoders reject. -->
+  <script src="/heic-to.js" defer></script>
 </head>
 <body>
   <div class="wrap">
@@ -695,7 +699,7 @@ function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result);
-    r.onerror = reject;
+    r.onerror = () => reject(new Error("Couldn't read the file"));
     r.readAsDataURL(file);
   });
 }
@@ -724,9 +728,27 @@ async function resizeImage(file, maxDim = 1024) {
       // resized 1024px JPEG looks identical on a phone tile.
       resolve({ dataUrl: out });
     };
-    img.onerror = reject;
+    img.onerror = () => reject(new Error("Couldn't decode the image (unsupported or corrupt file)"));
     img.src = dataUrl;
   });
+}
+
+// iPhones shoot HEIC/HEIF by default, which browsers can't draw onto a <canvas>.
+// Convert those to JPEG up front (self-hosted heic-to WASM decoder) so the resize
+// path below only ever sees formats the canvas can actually decode.
+function isHeic(file) {
+  const t = (file.type || "").toLowerCase();
+  if (t === "image/heic" || t === "image/heif") return true;
+  if (t.startsWith("image/jpeg") || t.startsWith("image/png") || t.startsWith("image/webp")) return false;
+  return /\.(heic|heif)$/i.test(file.name || "");
+}
+async function toCanvasReadyFile(file) {
+  if (!isHeic(file)) return file;
+  if (typeof window.HeicTo !== "function") {
+    throw new Error("HEIC converter didn't load — check your connection and retry");
+  }
+  const out = await HeicTo({ blob: file, type: "image/jpeg", quality: 0.9 });
+  return Array.isArray(out) ? out[0] : out;
 }
 
 function dataUrlToBase64(d) {
@@ -782,7 +804,8 @@ $("#fileInput").addEventListener("change", async (e) => {
   // Process sequentially to avoid hammering the endpoint.
   for (const photo of state.photos.filter(p => p.status === "loading")) {
     try {
-      const { dataUrl } = await resizeImage(photo.file, 1024);
+      const srcFile = await toCanvasReadyFile(photo.file);
+      const { dataUrl } = await resizeImage(srcFile, 1024);
       photo.dataUrl = dataUrl;                       // resized preview, not full-res original
       photo.smallBase64 = dataUrlToBase64(dataUrl);
       photo.status = "segmenting";

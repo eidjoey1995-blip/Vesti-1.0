@@ -390,9 +390,10 @@
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
-  <!-- Self-hosted HEIC/HEIF decoder. iPhone photos are HEIC, which the browser
-       canvas cannot decode; this converts them to JPEG before upload. -->
-  <script src="/heic2any.min.js" defer></script>
+  <!-- Self-hosted HEIC/HEIF decoder (heic-to, bundles libheif 1.23). iPhone photos
+       are HEIC, which the browser canvas cannot decode; this converts them to JPEG
+       before upload. Handles modern iPhone grid/HDR HEIC that older decoders reject. -->
+  <script src="/heic-to.js" defer></script>
 </head>
 <body>
   <div class="wrap">
@@ -733,7 +734,7 @@ async function resizeImage(file, maxDim = 1024) {
 }
 
 // iPhones shoot HEIC/HEIF by default, which browsers can't draw onto a <canvas>.
-// Convert those to JPEG up front (self-hosted heic2any WASM decoder) so the resize
+// Convert those to JPEG up front (self-hosted heic-to WASM decoder) so the resize
 // path below only ever sees formats the canvas can actually decode.
 function isHeic(file) {
   const t = (file.type || "").toLowerCase();
@@ -743,10 +744,10 @@ function isHeic(file) {
 }
 async function toCanvasReadyFile(file) {
   if (!isHeic(file)) return file;
-  if (typeof window.heic2any !== "function") {
+  if (typeof window.HeicTo !== "function") {
     throw new Error("HEIC converter didn't load — check your connection and retry");
   }
-  const out = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+  const out = await HeicTo({ blob: file, type: "image/jpeg", quality: 0.9 });
   return Array.isArray(out) ? out[0] : out;
 }
 

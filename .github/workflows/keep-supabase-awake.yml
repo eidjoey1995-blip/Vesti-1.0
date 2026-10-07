@@ -1,7 +1,8 @@
 name: Keep Supabase awake
 
 # Supabase Free pauses a project after 7 days with no database activity.
-# This runs once a day and makes one tiny query, which resets that 7-day clock.
+# This runs once a day and WRITES one tiny row, which resets that 7-day clock.
+# (A read-only query does not reliably count as activity, so we insert instead.)
 # Result: the database never falls asleep, so magic-link logins always work.
 
 on:
@@ -14,25 +15,34 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping the database
+      - name: Write a keepalive row
         run: |
-          # ---- PASTE YOUR PUBLIC KEY BELOW (between the quotes) ----
-          # Get it from: Supabase dashboard -> Project Settings -> API
-          #   -> copy the key labelled "anon" / "public" (NOT the service_role key).
+          # ---- PUBLIC (anon) KEY BELOW ----
+          # From: Supabase dashboard -> Project Settings -> API
+          #   -> the key labelled "anon" / "public" (NOT the service_role key).
           # This key is safe to put here; it already ships inside your app.
           ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtZ2Z0cW5la2lzcGF6amZucXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjIxNDAsImV4cCI6MjA5MzAzODE0MH0.0s6rlrt3i8ojwEyn-jkPntFrVgQzXK1NQKloNapBk4g"
 
-          echo "Pinging Supabase..."
+          echo "Writing a keepalive row to Supabase..."
+          # A WRITE (insert), not a read. The Free-tier 7-day pause timer resets on
+          # real database activity; a bare GET read does NOT reliably count, which
+          # is why the old read-only version still triggered a pause warning.
+          # Inserts one timestamp row into public.keepalive. An anon-insert RLS
+          # policy on that table lets the public anon key perform the write.
           STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
-            "https://tmgftqnekispazjfnqxw.supabase.co/rest/v1/profiles?select=id&limit=1" \
+            -X POST \
+            "https://tmgftqnekispazjfnqxw.supabase.co/rest/v1/keepalive" \
             -H "apikey: $ANON_KEY" \
-            -H "Authorization: Bearer $ANON_KEY")
+            -H "Authorization: Bearer $ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{}')
 
           echo "HTTP status: $STATUS"
-          # 200 or 206 = success. 401 usually means the key wasn't pasted correctly.
-          if [ "$STATUS" = "200" ] || [ "$STATUS" = "206" ]; then
-            echo "Success - the 7-day sleep timer has been reset."
+          # 201 = row created = success. 401 = bad key; 404 = keepalive table missing.
+          if [ "$STATUS" = "201" ]; then
+            echo "Success - keepalive row written, the 7-day sleep timer is reset."
           else
-            echo "Ping did not return success. Check that ANON_KEY is your anon/public key."
+            echo "Write did not return 201. Check ANON_KEY and that the keepalive table + anon-insert policy exist."
             exit 1
           fi
